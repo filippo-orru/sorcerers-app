@@ -1,4 +1,4 @@
-package com.example.sorcerers_app
+package com.filippoorru.sorcerers_app
 
 import io.flutter.embedding.android.FlutterActivity
 

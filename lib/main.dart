@@ -12,11 +12,15 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Flutter Demo',
+      title: 'Sorcerers',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.black),
-        primarySwatch: Colors.blue,
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: Colors.black,
+          brightness: Brightness.dark,
+          surface: Colors.black,
+          primary: Colors.white,
+        ),
         useMaterial3: true,
       ),
       home: const PlayerNamesPage(),
@@ -126,6 +130,7 @@ class _PlayerNameFieldState extends State<PlayerNameField> {
         onChanged: (value) => widget.onChanged(value),
         onSubmitted: null, // TODO
         decoration: const InputDecoration(
+          border: OutlineInputBorder(),
           hintText: "Player name",
         ),
       ),
