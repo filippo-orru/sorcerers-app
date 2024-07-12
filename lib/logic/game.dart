@@ -44,7 +44,7 @@ class NumberCard extends GameCard {
   }
 
   @override
-  String get description => "Number($number, $color)";
+  String get description => number.toString();
 
   @override
   Color get backgroundColor => switch (color) {
@@ -128,6 +128,18 @@ class Player {
   void clearHand() {
     hand.clear();
   }
+
+  bool canPlayCard(GameCard card, CardColor? leadColor) {
+    if (leadColor == null || card.canBePlayed(leadColor)) {
+      // If there is no lead color, any card can be played
+      return true;
+    } else {
+      // If the player has no card of the lead color, they can play any card
+      final hasLeadColorCard =
+          hand.any((handCard) => handCard is NumberCard && handCard.color == leadColor);
+      return !hasLeadColorCard;
+    }
+  }
 }
 
 class CardOnTable {
@@ -154,7 +166,7 @@ class Game with ChangeNotifier {
   late int currentPlayerInt;
   Player get currentPlayer => players[currentPlayerInt];
 
-  GameCard? trump;
+  late GameCard trump;
   CardColor? trumpColor;
   bool mustChooseTrumpColor = false;
 
@@ -195,6 +207,7 @@ class Game with ChangeNotifier {
       case JesterCard():
         trumpColor = null; // No trump color for this round
     }
+    this.trump = trump;
     cardsOnTable.clear();
     currentPlayerInt = initialPlayerInt;
     notifyListeners();

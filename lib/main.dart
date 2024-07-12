@@ -162,52 +162,138 @@ class GamePageInternal extends StatelessWidget {
         final winner = game.getRoundWinner();
 
         return Scaffold(
-          appBar: AppBar(
-            backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-            title: const Text("Sorcerers"),
-          ),
-          body: Column(
+          body: Stack(
             children: [
-              Padding(
-                padding: const EdgeInsets.all(8.0),
-                child: Text(
-                  'Your turn, ${game.currentPlayer.name}!',
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.all(8.0),
-                child: Text(
-                  'Trump: ${game.trump}',
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.all(8.0),
-                child: Text(
-                  'Lead: ${game.leadColor}',
-                ),
-              ),
-              for (final card in game.currentPlayer.hand) ...{
-                CardWidget(
-                  card: card,
-                  onTap: () {
-                    game.playCard(game.currentPlayer, card);
-                  },
-                ),
-              },
-              if (winner != null) ...{
-                Padding(
-                  padding: const EdgeInsets.all(8.0),
-                  child: Text(
-                    'Round winner: ${winner.name}',
+              Column(
+                children: [
+                  SafeArea(
+                    child: Column(
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.all(8.0),
+                          child: Text(
+                            'Your turn, ${game.currentPlayer.name}!',
+                          ),
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.all(8.0),
+                          child: Text(
+                            'Lead: ${game.leadColor}',
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-                ElevatedButton(
-                  onPressed: () {
-                    game.initializeRound();
-                  },
-                  child: const Text('Next round'),
-                ),
-              }
+                  const Spacer(),
+                  Container(
+                    margin: const EdgeInsets.only(top: 16),
+                    padding: const EdgeInsets.all(16),
+                    alignment: Alignment.center,
+                    width: double.infinity,
+                    child: SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          CardWidget(
+                            card: game.trump,
+                            isDeck: true,
+                            onTap: () {},
+                          ),
+                          for (final card in game.cardsOnTable) ...{
+                            CardWidget(
+                              card: card.card,
+                              onTap: () {},
+                            ),
+                          },
+                        ],
+                      ),
+                    ),
+                  ),
+                  const Spacer(),
+                  Container(
+                    margin: const EdgeInsets.only(top: 16),
+                    padding: const EdgeInsets.all(16),
+                    width: double.infinity,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).colorScheme.surfaceContainer,
+                      borderRadius: const BorderRadius.only(
+                        topLeft: Radius.circular(16),
+                        topRight: Radius.circular(16),
+                      ),
+                    ),
+                    child: SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          for (final card in game.currentPlayer.hand) ...{
+                            CardWidget(
+                              card: card,
+                              onTap: game.currentPlayer.canPlayCard(card, game.leadColor)
+                                  ? () {
+                                      game.playCard(game.currentPlayer, card);
+                                    }
+                                  : null,
+                            ),
+                          },
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              AnimatedSwitcher(
+                duration: const Duration(milliseconds: 350),
+                child: winner != null ? const ModalBarrier() : const SizedBox(),
+              ),
+              AnimatedSwitcher(
+                duration: const Duration(milliseconds: 350),
+                child: winner != null
+                    ? Container(
+                        color: Colors.black.withOpacity(0.5),
+                        child: Center(
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: Theme.of(context).colorScheme.surfaceContainer,
+                              border: Border.all(
+                                color: Theme.of(context).colorScheme.primary,
+                                width: 1,
+                              ),
+                            ),
+                            padding: const EdgeInsets.all(16),
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Padding(
+                                  padding: EdgeInsets.all(8.0),
+                                  child: Text(
+                                    "Winner",
+                                    style: TextStyle(fontSize: 18),
+                                  ),
+                                ),
+                                Padding(
+                                  padding: const EdgeInsets.all(8.0),
+                                  child: Text(
+                                    winner.name,
+                                    style: const TextStyle(fontSize: 24),
+                                  ),
+                                ),
+                                ElevatedButton(
+                                  onPressed: () {
+                                    game.roundNumber += 1;
+                                    game.initializeRound();
+                                  },
+                                  child: const Text('Next round'),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      )
+                    : const SizedBox(),
+              ),
             ],
           ),
         );
@@ -218,23 +304,47 @@ class GamePageInternal extends StatelessWidget {
 
 class CardWidget extends StatelessWidget {
   final GameCard card;
-  final void Function() onTap;
+  final void Function()? onTap;
+  final bool isDeck;
 
-  const CardWidget({super.key, required this.card, required this.onTap});
+  const CardWidget({
+    super.key,
+    required this.card,
+    required this.onTap,
+    this.isDeck = false,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: card.backgroundColor,
-      clipBehavior: Clip.antiAlias,
-      borderRadius: BorderRadius.circular(8),
-      child: InkWell(
-        onTap: onTap,
-        child: Container(
-          width: 100,
-          height: 150,
-          padding: const EdgeInsets.all(8),
-          child: Text(card.description),
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      child: Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: isDeck ? Colors.yellow : Colors.transparent,
+            width: isDeck ? 2 : 0,
+          ),
+        ),
+        padding: const EdgeInsets.all(4),
+        child: Material(
+          color: card.backgroundColor.withOpacity(onTap != null ? 1 : 0.5),
+          clipBehavior: Clip.antiAlias,
+          borderRadius: BorderRadius.circular(8),
+          child: InkWell(
+            onTap: onTap,
+            child: Container(
+              width: 100,
+              height: 150,
+              padding: const EdgeInsets.all(8),
+              alignment: Alignment.center,
+              child: Text(
+                card.description,
+                textAlign: TextAlign.center,
+                style: const TextStyle(color: Colors.black87, fontSize: 18),
+              ),
+            ),
+          ),
         ),
       ),
     );
