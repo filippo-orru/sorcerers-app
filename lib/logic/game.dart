@@ -10,7 +10,19 @@ sealed class GameCard {
   Color get backgroundColor;
 }
 
-enum CardColor { red, yellow, green, blue }
+enum CardColor {
+  red,
+  yellow,
+  green,
+  blue;
+
+  Color get color => switch (this) {
+        CardColor.red => Colors.red.shade200,
+        CardColor.yellow => Colors.yellow.shade200,
+        CardColor.green => Colors.green.shade200,
+        CardColor.blue => Colors.blue.shade200,
+      };
+}
 
 class NumberCard extends GameCard {
   final int number; // 1-13
@@ -47,12 +59,7 @@ class NumberCard extends GameCard {
   String get description => number.toString();
 
   @override
-  Color get backgroundColor => switch (color) {
-        CardColor.red => Colors.red.shade200,
-        CardColor.yellow => Colors.yellow.shade200,
-        CardColor.green => Colors.green.shade200,
-        CardColor.blue => Colors.blue.shade200,
-      };
+  Color get backgroundColor => color.color;
 }
 
 class WizardCard extends GameCard {
@@ -153,17 +160,20 @@ class Game with ChangeNotifier {
   Game(List<String> playerNames)
       : players = playerNames.map((name) => Player(name)).toList(),
         initialPlayerInt = 0 {
-    initializeRound();
+    startNewRound(incrementRound: false);
   }
 
   final List<Player> players;
   final int initialPlayerInt;
+  final GameScore gameScore = GameScore();
+  int get totalRoundsCount => (deck.cards.length / players.length).floor();
+  bool get finished => gameScore.length >= totalRoundsCount;
 
   // Round
   int roundNumber = 0;
   int get cardsForRound => roundNumber + 1;
-  late Deck deck;
-  final Map<Player, RoundScore> roundScores = {};
+  late Deck deck; // TODO could be removed.. Only the server would need it
+  Map<Player, RoundScore> roundScores = {};
   RoundState get roundState {
     if (roundScores.length < players.length) {
       return RoundState.predictScore;
@@ -199,15 +209,19 @@ class Game with ChangeNotifier {
     return null;
   }
 
-  void initializeRound() {
-    deck = Deck();
-
-    if (cardsForRound * players.length >= deck.cards.length) {
-      throw Exception("Not enough cards in the deck");
-    }
+  void startNewRound({required bool incrementRound}) {
+    deck = Deck(); // TODO "manual shuffling"
 
     if (roundNumber > 0 && roundState != RoundState.finished) {
       throw Exception("Round not finished");
+    }
+
+    if (incrementRound) {
+      gameScore.addRound(roundNumber, roundScores);
+
+      if (roundNumber < totalRoundsCount) {
+        roundNumber += 1;
+      }
     }
 
     for (final player in players) {
@@ -227,16 +241,18 @@ class Game with ChangeNotifier {
     }
     this.trump = trump;
     cardsOnTable.clear();
-    currentPlayerInt = initialPlayerInt;
+    currentPlayerInt = initialPlayerInt; // TODO cycle go through players
+
+    roundScores = {};
     notifyListeners();
   }
 
-  void setPredictedScore(Player player, int predictedScore) {
+  void setBid(Player player, int bid) {
     if (roundState != RoundState.predictScore) {
       throw Exception("Not in the prediction phase");
     }
 
-    roundScores[player] = RoundScore(player, predictedScore);
+    roundScores[player] = RoundScore(player, bid);
     notifyListeners();
   }
 
@@ -258,7 +274,6 @@ class Game with ChangeNotifier {
       final winner = getTrickWinner();
       if (winner != null) {
         roundScores[winner]!.wonTrick();
-        cardsOnTable.clear(); // TODO don't clear immediately. Wait for players to confirm
         currentPlayerInt = players.indexOf(winner);
       } else {
         throw Exception("Trick finished but no winner?");
@@ -272,7 +287,10 @@ class Game with ChangeNotifier {
     if (cardsOnTable.length < players.length) {
       return null;
     }
+    return getStrongestCard()?.player;
+  }
 
+  CardOnTable? getStrongestCard() {
     CardOnTable? winningCard;
     for (final cardOnTable in cardsOnTable) {
       if (winningCard == null) {
@@ -284,7 +302,30 @@ class Game with ChangeNotifier {
         }
       }
     }
-    return winningCard?.player;
+    return winningCard;
+  }
+
+  void readyForNextTrick() {
+    cardsOnTable.clear();
+    notifyListeners();
+  }
+
+  void stop() {}
+}
+
+class GameScore {
+  final Map<int, Map<Player, RoundScore>> _scores = {};
+
+  int get length => _scores.length;
+
+  void addRound(int roundNumber, Map<Player, RoundScore> scores) {
+    _scores[roundNumber] = scores;
+  }
+
+  int getTotalPointsFor(Player player) {
+    int result = 0;
+    _scores.forEach((i, scores) => result += scores[player]!.getPoints());
+    return result;
   }
 }
 
