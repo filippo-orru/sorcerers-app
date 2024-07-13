@@ -161,8 +161,22 @@ class Game with ChangeNotifier {
 
   // Round
   int roundNumber = 0;
+  int get cardsForRound => roundNumber + 1;
   late Deck deck;
+  final Map<Player, RoundScore> roundScores = {};
+  RoundState get roundState {
+    if (roundScores.length < players.length) {
+      return RoundState.predictScore;
+    } else if (players.any((player) => player.hand.isNotEmpty)) {
+      return RoundState.playing;
+    } else {
+      return RoundState.finished;
+    }
+  }
+
+  // Trick
   final List<CardOnTable> cardsOnTable = [];
+  int get trickNumber => cardsOnTable.length;
   late int currentPlayerInt;
   Player get currentPlayer => players[currentPlayerInt];
 
@@ -188,13 +202,17 @@ class Game with ChangeNotifier {
   void initializeRound() {
     deck = Deck();
 
-    if (roundNumber * players.length >= deck.cards.length) {
+    if (cardsForRound * players.length >= deck.cards.length) {
       throw Exception("Not enough cards in the deck");
+    }
+
+    if (roundNumber > 0 && roundState != RoundState.finished) {
+      throw Exception("Round not finished");
     }
 
     for (final player in players) {
       player.clearHand();
-      for (var i = 0; i < (roundNumber + 1); i++) {
+      for (var i = 0; i < cardsForRound; i++) {
         player.drawCard(deck.cards.removeLast());
       }
     }
@@ -213,7 +231,20 @@ class Game with ChangeNotifier {
     notifyListeners();
   }
 
+  void setPredictedScore(Player player, int predictedScore) {
+    if (roundState != RoundState.predictScore) {
+      throw Exception("Not in the prediction phase");
+    }
+
+    roundScores[player] = RoundScore(player, predictedScore);
+    notifyListeners();
+  }
+
   void playCard(Player player, GameCard card) {
+    if (roundState != RoundState.playing) {
+      throw Exception("Not in the playing phase");
+    }
+
     if (player != currentPlayer) {
       throw Exception("Not the player's turn");
     }
@@ -221,11 +252,24 @@ class Game with ChangeNotifier {
     currentPlayer.playCard(card);
     cardsOnTable.add(CardOnTable(player, card));
     currentPlayerInt = (currentPlayerInt + 1) % players.length;
+
+    if (cardsOnTable.length == players.length) {
+      // End of the trick
+      final winner = getTrickWinner();
+      if (winner != null) {
+        roundScores[winner]!.wonTrick();
+        cardsOnTable.clear(); // TODO don't clear immediately. Wait for players to confirm
+        currentPlayerInt = players.indexOf(winner);
+      } else {
+        throw Exception("Trick finished but no winner?");
+      }
+    }
+
     notifyListeners();
   }
 
-  Player? getRoundWinner() {
-    if (players.any((player) => player.hand.isNotEmpty)) {
+  Player? getTrickWinner() {
+    if (cardsOnTable.length < players.length) {
       return null;
     }
 
@@ -241,5 +285,32 @@ class Game with ChangeNotifier {
       }
     }
     return winningCard?.player;
+  }
+}
+
+enum RoundState {
+  predictScore,
+  playing,
+  finished,
+}
+
+class RoundScore {
+  final Player player;
+  final int predictedScore;
+
+  RoundScore(this.player, this.predictedScore);
+
+  int currentScore = 0;
+
+  void wonTrick() {
+    currentScore += 1;
+  }
+
+  int getPoints() {
+    if (currentScore == predictedScore) {
+      return 20 + currentScore * 10;
+    } else {
+      return -10 * (currentScore - predictedScore).abs();
+    }
   }
 }
