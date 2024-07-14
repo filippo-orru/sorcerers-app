@@ -1,7 +1,6 @@
 import 'dart:math';
 
 import 'package:flutter/material.dart';
-import 'package:local_hero/local_hero.dart';
 import 'package:provider/provider.dart';
 import 'package:sorcerers_app/extensions.dart';
 import 'package:sorcerers_app/logic/game.dart';
@@ -250,191 +249,184 @@ class _GameWidgetState extends State<GameWidget> {
         }
 
         return Scaffold(
-          body: LocalHeroScope(
-            duration: const Duration(milliseconds: 300),
-            curve: Curves.easeInOut,
-            child: Stack(
-              children: [
-                SafeArea(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: Column(
-                      children: [
-                        Padding(
-                          padding: const EdgeInsets.only(top: 12),
-                          child: Stack(
-                            children: [
-                              Center(
-                                child: OutlinedButton.icon(
-                                  // padding: const EdgeInsets.all(8),
-                                  // decoration: BoxDecoration(
-                                  //   color: Theme.of(context).colorScheme.surfaceContainerLow,
-                                  //   border: Border.all(
-                                  //       color:
-                                  //           Theme.of(context).colorScheme.primary.withOpacity(0.7)),
-                                  // ),
-                                  onPressed: () {
-                                    setState(() {
-                                      showMenu = true;
-                                    });
-                                  },
-                                  label: Text(
-                                    "Round ${game.cardsForRound}",
-                                  ),
-                                  icon: Icon(Icons.menu_rounded),
+          body: Stack(
+            children: [
+              SafeArea(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Column(
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.only(top: 12),
+                        child: Stack(
+                          children: [
+                            Center(
+                              child: OutlinedButton.icon(
+                                // padding: const EdgeInsets.all(8),
+                                // decoration: BoxDecoration(
+                                //   color: Theme.of(context).colorScheme.surfaceContainerLow,
+                                //   border: Border.all(
+                                //       color:
+                                //           Theme.of(context).colorScheme.primary.withOpacity(0.7)),
+                                // ),
+                                onPressed: () {
+                                  setState(() {
+                                    showMenu = true;
+                                  });
+                                },
+                                label: Text(
+                                  "Round ${game.cardsForRound}",
                                 ),
+                                icon: Icon(Icons.menu_rounded),
                               ),
-                              Align(
-                                alignment: Alignment.centerRight,
-                                child: Container(
-                                  decoration: BoxDecoration(
-                                    border: Border.all(color: Colors.yellow),
-                                  ),
-                                  padding: const EdgeInsets.all(4),
-                                  child: CardContent(card: game.trump, onTap: () {}, scale: 0.5),
+                            ),
+                            Align(
+                              alignment: Alignment.centerRight,
+                              child: Container(
+                                decoration: BoxDecoration(
+                                  border: Border.all(color: Colors.yellow),
                                 ),
+                                padding: const EdgeInsets.all(4),
+                                child: CardContent(card: game.trump, onTap: () {}, scale: 0.5),
                               ),
-                            ],
+                            ),
+                          ],
+                        ),
+                      ),
+                      Expanded(
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          child: GridView.count(
+                            crossAxisCount: 2,
+                            mainAxisSpacing: 16,
+                            crossAxisSpacing: 16,
+                            children: game.players
+                                .map((player) => PlayerOnTable(
+                                      player,
+                                      isActive: player == currentPlayer,
+                                    ))
+                                .toList(),
                           ),
                         ),
-                        Expanded(
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 16),
-                            child: GridView.count(
-                              crossAxisCount: 2,
-                              mainAxisSpacing: 16,
-                              crossAxisSpacing: 16,
-                              children: game.players
-                                  .map((player) => PlayerOnTable(
-                                        player,
-                                        isActive: player == currentPlayer,
-                                      ))
-                                  .toList(),
+                      ),
+                      Instructions(currentPlayer: currentPlayer),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        width: double.infinity,
+                        alignment: Alignment.center,
+                        decoration: BoxDecoration(
+                          color: Theme.of(context).colorScheme.surfaceContainer,
+                          border: Border(
+                            left: BorderSide(
+                              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                            ),
+                            top: BorderSide(
+                              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                            ),
+                            right: BorderSide(
+                              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                             ),
                           ),
                         ),
-                        Instructions(currentPlayer: currentPlayer),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 16),
-                          width: double.infinity,
-                          alignment: Alignment.center,
+                        child: Column(
+                          children: [
+                            const SizedBox(height: 16),
+                            AnimatedContainer(
+                              duration: Duration(milliseconds: 200),
+                              height: currentPlayer.hand.isNotEmpty ? 150 : 32,
+                              child: ListView(
+                                shrinkWrap: true,
+                                scrollDirection: Axis.horizontal,
+                                children: [
+                                  for (final (i, card) in currentPlayer.hand.indexed) ...[
+                                    CardContent(
+                                      card: card,
+                                      onTap: game.roundState == RoundState.playing &&
+                                              game.cardsOnTable.length < game.players.length &&
+                                              currentPlayer.canPlayCard(card, game.leadColor)
+                                          ? () {
+                                              game.playCard(currentPlayer, card);
+                                            }
+                                          : null,
+                                    ),
+                                    if (i < currentPlayer.hand.length - 1) ...{
+                                      const SizedBox(width: 8),
+                                    }
+                                  ],
+                                ],
+                              ),
+                            ),
+                            const SizedBox(height: 16),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              AnimatedSwitcher(
+                duration: const Duration(milliseconds: 200),
+                child: showMenu
+                    ? ModalBarrier(
+                        key: ValueKey("Modal"),
+                        dismissible: true,
+                        onDismiss: () {
+                          setState(() {
+                            showMenu = false;
+                          });
+                        },
+                        color: Theme.of(context).colorScheme.scrim.withOpacity(0.75))
+                    : const SizedBox(),
+              ),
+              AnimatedSwitcher(
+                duration: const Duration(milliseconds: 200),
+                child: showMenu
+                    ? Center(
+                        child: Container(
+                          margin: EdgeInsets.all(16),
+                          padding: EdgeInsets.all(16),
                           decoration: BoxDecoration(
-                            color: Theme.of(context).colorScheme.surfaceContainer,
-                            border: Border(
-                              left: BorderSide(
-                                color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
-                              ),
-                              top: BorderSide(
-                                color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
-                              ),
-                              right: BorderSide(
-                                color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
-                              ),
+                            color: Theme.of(context).colorScheme.surfaceContainerLow,
+                            border: Border.all(
+                              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                             ),
                           ),
                           child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            crossAxisAlignment: CrossAxisAlignment.center,
                             children: [
-                              const SizedBox(height: 16),
-                              AnimatedContainer(
-                                duration: Duration(milliseconds: 800),
-                                height: currentPlayer.hand.isNotEmpty ? 150 : 32,
-                                child: ListView(
-                                  shrinkWrap: true,
-                                  scrollDirection: Axis.horizontal,
-                                  children: [
-                                    for (final (i, card) in currentPlayer.hand.indexed) ...[
-                                      LocalHero(
-                                        tag: card.description,
-                                        child: CardContent(
-                                          card: card,
-                                          onTap: game.roundState == RoundState.playing &&
-                                                  game.cardsOnTable.length < game.players.length &&
-                                                  currentPlayer.canPlayCard(card, game.leadColor)
-                                              ? () {
-                                                  game.playCard(currentPlayer, card);
-                                                }
-                                              : null,
-                                        ),
-                                      ),
-                                      if (i < currentPlayer.hand.length - 1) ...{
-                                        const SizedBox(width: 8),
-                                      }
-                                    ],
-                                  ],
-                                ),
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Text("Round ${game.cardsForRound}",
+                                      style: Theme.of(context).textTheme.titleLarge),
+                                  IconButton(
+                                    onPressed: () {
+                                      setState(() {
+                                        showMenu = false;
+                                      });
+                                    },
+                                    icon: Icon(Icons.close),
+                                  ),
+                                ],
                               ),
                               const SizedBox(height: 16),
+                              ScoresTable(),
+                              const Divider(height: 32),
+                              OutlinedButton(
+                                onPressed: () {
+                                  game.stop();
+                                  Navigator.of(context).popUntil((route) => route.isFirst);
+                                },
+                                child: const Text('Stop playing'),
+                              ),
                             ],
                           ),
                         ),
-                      ],
-                    ),
-                  ),
-                ),
-                AnimatedSwitcher(
-                  duration: const Duration(milliseconds: 200),
-                  child: showMenu
-                      ? ModalBarrier(
-                          key: ValueKey("Modal"),
-                          dismissible: true,
-                          onDismiss: () {
-                            setState(() {
-                              showMenu = false;
-                            });
-                          },
-                          color: Theme.of(context).colorScheme.scrim.withOpacity(0.75))
-                      : const SizedBox(),
-                ),
-                AnimatedSwitcher(
-                  duration: const Duration(milliseconds: 200),
-                  child: showMenu
-                      ? Center(
-                          child: Container(
-                            margin: EdgeInsets.all(16),
-                            padding: EdgeInsets.all(16),
-                            decoration: BoxDecoration(
-                              color: Theme.of(context).colorScheme.surfaceContainerLow,
-                              border: Border.all(
-                                color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
-                              ),
-                            ),
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              crossAxisAlignment: CrossAxisAlignment.center,
-                              children: [
-                                Row(
-                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    Text("Round ${game.cardsForRound}",
-                                        style: Theme.of(context).textTheme.titleLarge),
-                                    IconButton(
-                                      onPressed: () {
-                                        setState(() {
-                                          showMenu = false;
-                                        });
-                                      },
-                                      icon: Icon(Icons.close),
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: 16),
-                                ScoresTable(),
-                                const Divider(height: 32),
-                                OutlinedButton(
-                                  onPressed: () {
-                                    game.stop();
-                                    Navigator.of(context).popUntil((route) => route.isFirst);
-                                  },
-                                  child: const Text('Stop playing'),
-                                ),
-                              ],
-                            ),
-                          ),
-                        )
-                      : const SizedBox(),
-                ),
-              ],
-            ),
+                      )
+                    : const SizedBox(),
+              ),
+            ],
           ),
         );
       },
@@ -767,12 +759,9 @@ class PlayerOnTable extends StatelessWidget {
                                   : null,
                             ),
                             child: cardOnTable != null
-                                ? LocalHero(
-                                    tag: cardOnTable.card.description,
-                                    child: CardContent(
-                                      card: cardOnTable.card,
-                                      onTap: () {},
-                                    ),
+                                ? CardContent(
+                                    card: cardOnTable.card,
+                                    onTap: () {},
                                   )
                                 : const SizedBox.expand(),
                           ),

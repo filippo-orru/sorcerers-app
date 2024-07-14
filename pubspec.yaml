@@ -37,7 +37,6 @@ dependencies:
   cupertino_icons: ^1.0.6
   provider: ^6.1.2
   socket_io_client: ^2.0.3+1
-  local_hero: ^0.3.0
 
 dev_dependencies:
   flutter_test:
