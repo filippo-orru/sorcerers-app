@@ -3,7 +3,10 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:sorcerers_app/extensions.dart';
-import 'package:sorcerers_app/logic/game.dart';
+import 'package:sorcerers_app/game/cards.dart';
+import 'package:sorcerers_app/game/game.dart';
+import 'package:sorcerers_app/game/providers/local_game_provider.dart';
+import 'package:sorcerers_app/messages/game_messages/game_messages_client.dart';
 
 void main() {
   runApp(const SorcerersApp());
@@ -105,12 +108,13 @@ class PlayerNamesScreen extends StatefulWidget {
 }
 
 class _PlayerNamesScreenState extends State<PlayerNamesScreen> {
-  final List<String> players = ["filippo", "nici", "senfti"];
+  final List<String> playerNames = ["filippo", "nici", "senfti"];
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Center(
+      body: MaxWidth(
+        maxWidth: 400,
         child: Padding(
           padding: const EdgeInsets.all(16),
           child: Column(
@@ -122,12 +126,12 @@ class _PlayerNamesScreenState extends State<PlayerNamesScreen> {
                 style: TextStyle(fontSize: 24),
               ),
               const SizedBox(height: 16),
-              for (final (index, player) in players.indexed) ...{
+              for (final (index, player) in playerNames.indexed) ...{
                 PlayerNameField(
                   player: player,
                   onChanged: (value) {
                     setState(() {
-                      players[index] = value;
+                      playerNames[index] = value;
                     });
                   },
                 ),
@@ -135,29 +139,32 @@ class _PlayerNamesScreenState extends State<PlayerNamesScreen> {
               OutlinedButton.icon(
                 onPressed: () {
                   setState(() {
-                    players.add("");
+                    playerNames.add("");
                   });
                 },
                 label: SizedBox(),
                 icon: Icon(Icons.add),
               ),
+              const SizedBox(height: 64),
+              OutlinedButton.icon(
+                onPressed: playerNames.isNotEmpty
+                    ? () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => GameScreen(
+                              provider: LocalGameProvider(playerNames),
+                            ),
+                          ),
+                        );
+                      }
+                    : null,
+                label: Text("Start game"),
+                icon: Icon(Icons.play_arrow_rounded),
+              ),
             ],
           ),
         ),
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: players.isNotEmpty
-            ? () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => GameScreen(players: players),
-                  ),
-                );
-              }
-            : null,
-        tooltip: 'Play',
-        child: const Icon(Icons.play_arrow_rounded),
       ),
     );
   }
@@ -187,6 +194,7 @@ class _PlayerNameFieldState extends State<PlayerNameField> {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.player != widget.player) {
       controller.text = widget.player;
+      controller.selection = TextSelection.collapsed(offset: widget.player.length);
     }
   }
 
@@ -213,15 +221,17 @@ class _PlayerNameFieldState extends State<PlayerNameField> {
 }
 
 class GameScreen extends StatelessWidget {
-  final List<String> players;
+  final GameStateProvider provider;
 
-  const GameScreen({super.key, required this.players});
+  const GameScreen({super.key, required this.provider});
 
   @override
   Widget build(BuildContext context) {
-    return ChangeNotifierProvider<Game>(
-      create: (context) => Game(players),
-      child: const GameWidget(),
+    return Scaffold(
+      body: ChangeNotifierProvider<GameStateProvider>.value(
+        value: provider,
+        child: const GameWidget(),
+      ),
     );
   }
 }
@@ -238,20 +248,15 @@ class _GameWidgetState extends State<GameWidget> {
 
   @override
   Widget build(BuildContext context) {
-    return Consumer<Game>(
-      builder: (_, game, __) {
-        final Player currentPlayer;
-        if (game.roundState == RoundState.predictScore) {
-          currentPlayer =
-              game.players.firstWhere((player) => !game.roundScores.containsKey(player));
-        } else {
-          currentPlayer = game.currentPlayer;
-        }
+    return Consumer<GameStateProvider>(
+      builder: (_, gameStateProvider, __) {
+        final game = gameStateProvider.value;
+        final currentPlayer = game.players[game.currentPlayerId]!;
 
-        return Scaffold(
-          body: Stack(
-            children: [
-              SafeArea(
+        return Stack(
+          children: [
+            MaxWidth(
+              child: SafeArea(
                 child: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
                   child: Column(
@@ -280,16 +285,18 @@ class _GameWidgetState extends State<GameWidget> {
                                 icon: Icon(Icons.menu_rounded),
                               ),
                             ),
-                            Align(
-                              alignment: Alignment.centerRight,
-                              child: Container(
-                                decoration: BoxDecoration(
-                                  border: Border.all(color: Colors.yellow),
+                            if (game.trump != null) ...{
+                              Align(
+                                alignment: Alignment.centerRight,
+                                child: Container(
+                                  decoration: BoxDecoration(
+                                    border: Border.all(color: Colors.yellow),
+                                  ),
+                                  padding: const EdgeInsets.all(4),
+                                  child: CardContent(card: game.trump!, onTap: () {}, scale: 0.5),
                                 ),
-                                padding: const EdgeInsets.all(4),
-                                child: CardContent(card: game.trump, onTap: () {}, scale: 0.5),
                               ),
-                            ),
+                            }
                           ],
                         ),
                       ),
@@ -297,10 +304,10 @@ class _GameWidgetState extends State<GameWidget> {
                         child: Padding(
                           padding: const EdgeInsets.symmetric(vertical: 16),
                           child: GridView.count(
-                            crossAxisCount: 2,
+                            crossAxisCount: MediaQuery.of(context).size.width > 600 ? 3 : 2,
                             mainAxisSpacing: 16,
                             crossAxisSpacing: 16,
-                            children: game.players
+                            children: game.players.values
                                 .map((player) => PlayerOnTable(
                                       player,
                                       isActive: player == currentPlayer,
@@ -341,11 +348,11 @@ class _GameWidgetState extends State<GameWidget> {
                                   for (final (i, card) in currentPlayer.hand.indexed) ...[
                                     CardContent(
                                       card: card,
-                                      onTap: game.roundState == RoundState.playing &&
+                                      onTap: game.roundStage == RoundStage.playing &&
                                               game.cardsOnTable.length < game.players.length &&
                                               currentPlayer.canPlayCard(card, game.leadColor)
                                           ? () {
-                                              game.playCard(currentPlayer, card);
+                                              game.sendIntent(PlayCard(card));
                                             }
                                           : null,
                                     ),
@@ -364,72 +371,103 @@ class _GameWidgetState extends State<GameWidget> {
                   ),
                 ),
               ),
-              AnimatedSwitcher(
+            ),
+            AnimatedSwitcher(
+              duration: const Duration(milliseconds: 200),
+              child: showMenu
+                  ? ModalBarrier(
+                      key: ValueKey("Modal"),
+                      dismissible: true,
+                      onDismiss: () {
+                        setState(() {
+                          showMenu = false;
+                        });
+                      },
+                      color: Theme.of(context).colorScheme.scrim.withOpacity(0.75))
+                  : const SizedBox(),
+            ),
+            MaxWidth(
+              child: AnimatedSwitcher(
                 duration: const Duration(milliseconds: 200),
                 child: showMenu
-                    ? ModalBarrier(
-                        key: ValueKey("Modal"),
-                        dismissible: true,
-                        onDismiss: () {
-                          setState(() {
-                            showMenu = false;
-                          });
-                        },
-                        color: Theme.of(context).colorScheme.scrim.withOpacity(0.75))
-                    : const SizedBox(),
-              ),
-              AnimatedSwitcher(
-                duration: const Duration(milliseconds: 200),
-                child: showMenu
-                    ? Center(
-                        child: Container(
-                          margin: EdgeInsets.all(16),
-                          padding: EdgeInsets.all(16),
-                          decoration: BoxDecoration(
-                            color: Theme.of(context).colorScheme.surfaceContainerLow,
-                            border: Border.all(
-                              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                    ? Actions(
+                        actions: {
+                          DismissIntent: CallbackAction(
+                            onInvoke: (_) => setState(
+                              () => showMenu = false,
                             ),
                           ),
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            crossAxisAlignment: CrossAxisAlignment.center,
-                            children: [
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        },
+                        child: Focus(
+                          autofocus: true,
+                          child: Center(
+                            child: Container(
+                              margin: EdgeInsets.all(16),
+                              padding: EdgeInsets.all(16),
+                              decoration: BoxDecoration(
+                                color: Theme.of(context).colorScheme.surfaceContainerLow,
+                                border: Border.all(
+                                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                                ),
+                              ),
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                crossAxisAlignment: CrossAxisAlignment.center,
                                 children: [
-                                  Text("Round ${game.cardsForRound}",
-                                      style: Theme.of(context).textTheme.titleLarge),
-                                  IconButton(
+                                  Row(
+                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Text("Round ${game.cardsForRound}",
+                                          style: Theme.of(context).textTheme.titleLarge),
+                                      IconButton(
+                                        onPressed: () {
+                                          setState(() {
+                                            showMenu = false;
+                                          });
+                                        },
+                                        icon: Icon(Icons.close),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 16),
+                                  ScoresTable(),
+                                  const Divider(height: 32),
+                                  OutlinedButton(
                                     onPressed: () {
-                                      setState(() {
-                                        showMenu = false;
-                                      });
+                                      game.sendIntent(LeaveGame());
+                                      Navigator.of(context).popUntil((route) => route.isFirst);
                                     },
-                                    icon: Icon(Icons.close),
+                                    child: const Text('Stop playing'),
                                   ),
                                 ],
                               ),
-                              const SizedBox(height: 16),
-                              ScoresTable(),
-                              const Divider(height: 32),
-                              OutlinedButton(
-                                onPressed: () {
-                                  game.stop();
-                                  Navigator.of(context).popUntil((route) => route.isFirst);
-                                },
-                                child: const Text('Stop playing'),
-                              ),
-                            ],
+                            ),
                           ),
                         ),
                       )
                     : const SizedBox(),
               ),
-            ],
-          ),
+            ),
+          ],
         );
       },
+    );
+  }
+}
+
+class MaxWidth extends StatelessWidget {
+  final Widget child;
+  final double maxWidth;
+
+  const MaxWidth({super.key, required this.child, this.maxWidth = 600});
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: ConstrainedBox(
+        constraints: BoxConstraints(maxWidth: maxWidth),
+        child: child,
+      ),
     );
   }
 }
@@ -440,20 +478,23 @@ class Instructions extends StatelessWidget {
     required this.currentPlayer,
   });
 
-  final Player currentPlayer;
+  final PlayerState currentPlayer;
 
   @override
   Widget build(BuildContext context) {
-    return Consumer<Game>(
-      builder: (_, game, __) {
-        final bool isBidding = game.roundState == RoundState.predictScore;
-        final bool isFinished = game.roundState == RoundState.finished;
+    return Consumer<GameStateProvider>(
+      builder: (_, gameStateProvider, __) {
+        final game = gameStateProvider.value;
+
+        final bool isShuffle = game.roundStage == RoundStage.shuffle;
+        final bool mustChooseTrumpColor = game.roundStage == RoundStage.mustChooseTrumpColor;
+        final bool isBidding = game.roundStage == RoundStage.bidding;
+        final bool isFinished = game.roundStage == RoundStage.finished;
         final bool isTrickFinished = game.cardsOnTable.length == game.players.length;
 
-        final bool chooseTrumpColor = game.mustChooseTrumpColor && game.trumpColor == null;
         // final bool chooseTrumpColorMe = true; // TODO
 
-        final bool important = isBidding || isFinished || isTrickFinished;
+        final bool important = isShuffle || isBidding || isFinished || isTrickFinished;
 
         return Container(
           margin: const EdgeInsets.symmetric(vertical: 16),
@@ -469,17 +510,17 @@ class Instructions extends StatelessWidget {
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
-            key: ValueKey(game.roundState.toString() + isTrickFinished.toString()),
+            key: ValueKey(game.roundStage.toString() + isTrickFinished.toString()),
             children: [
               if (isTrickFinished) ...[
                 Text(
-                  "${game.getTrickWinner()!.name} won this trick!",
+                  "${game.players[game.getTrickWinner()!]!.name} won this trick!",
                   style: const TextStyle(fontSize: 18),
                 ),
                 const SizedBox(height: 16),
                 ElevatedButton(
                   onPressed: () {
-                    game.readyForNextTrick();
+                    game.sendIntent(ReadyForNextTrick());
                   },
                   child: const Text('Continue'),
                 ),
@@ -493,11 +534,25 @@ class Instructions extends StatelessWidget {
                 const SizedBox(height: 16),
                 ElevatedButton(
                   onPressed: () {
-                    game.startNewRound(incrementRound: true);
+                    game.sendIntent(StartNewRound());
                   },
                   child: const Text('Next round'),
                 ),
-              ] else if (game.roundState == RoundState.predictScore) ...[
+              ] else if (isShuffle) ...[
+                const Text(
+                  "Shuffle the deck",
+                  style: TextStyle(fontSize: 18),
+                ),
+                const SizedBox(height: 16),
+                Center(
+                  child: OutlinedButton(
+                    onPressed: () {
+                      game.sendIntent(ShuffleDeck());
+                    },
+                    child: Text("Shuffle"),
+                  ),
+                ),
+              ] else if (isBidding) ...[
                 const Text(
                   "Bid your tricks",
                   style: TextStyle(fontSize: 18),
@@ -511,18 +566,17 @@ class Instructions extends StatelessWidget {
                         game.cardsForRound + 1, // +1 for 0
                         (i) => Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 6),
-                          child: GestureDetector(
-                            onTap: () {
-                              game.setBid(currentPlayer, i);
-                            },
-                            child: Container(
-                              width: 48,
-                              height: 48,
-                              alignment: Alignment.center,
-                              decoration: BoxDecoration(
-                                border: Border.all(color: Colors.white),
-                                color: Colors.white.withOpacity(.1),
+                          child: SizedBox(
+                            width: 48,
+                            height: 48,
+                            child: OutlinedButton(
+                              style: ButtonStyle(
+                                padding: WidgetStatePropertyAll(EdgeInsets.zero),
+                                alignment: Alignment.center,
                               ),
+                              onPressed: () {
+                                game.sendIntent(SetBid(i));
+                              },
                               child: Text(
                                 "$i",
                                 style: const TextStyle(fontSize: 24),
@@ -534,7 +588,7 @@ class Instructions extends StatelessWidget {
                     ),
                   ),
                 ),
-              ] else if (chooseTrumpColor) ...[
+              ] else if (mustChooseTrumpColor) ...[
                 const Text(
                   "Pick the trump color",
                   style: TextStyle(fontSize: 18),
@@ -547,7 +601,7 @@ class Instructions extends StatelessWidget {
                           padding: const EdgeInsets.symmetric(horizontal: 6),
                           child: GestureDetector(
                             onTap: () {
-                              game.trumpColor = color;
+                              game.sendIntent(SetTrumpColor(color));
                             },
                             child: Container(
                               width: 48,
@@ -563,7 +617,7 @@ class Instructions extends StatelessWidget {
                       )
                       .toList(),
                 ),
-              ] else if (game.roundState == RoundState.playing) ...[
+              ] else if (game.roundStage == RoundStage.playing) ...[
                 const Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
@@ -586,63 +640,66 @@ class ScoresTable extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Consumer<Game>(builder: (_, game, __) {
-      return Table(
-        columnWidths: const {
-          0: FlexColumnWidth(2),
-        },
-        children: [
-          TableRow(
-            children: [
-              TableCell(
-                child: Text(
-                  "Player".toUpperCase(),
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  ),
-                ),
-              ),
-              TableCell(
-                child: Text(
-                  "Tricks".toUpperCase(),
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  ),
-                ),
-              ),
-              TableCell(
-                child: Text(
-                  "Points".toUpperCase(),
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          TableRow(
-            children: const [
-              SizedBox(height: 8),
-              SizedBox(height: 8),
-              SizedBox(height: 8),
-            ],
-          ),
-          for (final player in game.players) ...[
+    return Consumer<GameStateProvider>(
+      builder: (_, gameStateProvider, __) {
+        final game = gameStateProvider.value;
+        return Table(
+          columnWidths: const {
+            0: FlexColumnWidth(2),
+          },
+          children: [
             TableRow(
-              children: buildCells(player, game),
+              children: [
+                TableCell(
+                  child: Text(
+                    "Player".toUpperCase(),
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ),
+                TableCell(
+                  child: Text(
+                    "Tricks".toUpperCase(),
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ),
+                TableCell(
+                  child: Text(
+                    "Points".toUpperCase(),
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ),
+              ],
             ),
+            TableRow(
+              children: const [
+                SizedBox(height: 8),
+                SizedBox(height: 8),
+                SizedBox(height: 8),
+              ],
+            ),
+            for (final player in game.players.values) ...[
+              TableRow(
+                children: buildCells(player, game),
+              ),
+            ],
           ],
-        ],
-      );
-    });
+        );
+      },
+    );
   }
 
-  List<TableCell> buildCells(Player player, Game game) {
-    final roundScore = game.roundScores[player];
-    final totalPoints = game.gameScore.getTotalPointsFor(player);
+  List<TableCell> buildCells(PlayerState player, GameState game) {
+    final roundScore = game.roundScores[player.id];
+    final totalPoints = game.gameScore.getTotalPointsFor(player.id);
     if (roundScore == null) {
       return [
         TableCell(child: Text(player.name)),
@@ -654,7 +711,7 @@ class ScoresTable extends StatelessWidget {
         TableCell(child: Text(player.name)),
         TableCell(
           child: Text(
-            "${roundScore.currentScore}/${roundScore.predictedScore}",
+            "${roundScore.currentScore}/${roundScore.bid}",
           ),
         ),
         TableCell(
@@ -703,24 +760,25 @@ class CardContent extends StatelessWidget {
 }
 
 class PlayerOnTable extends StatelessWidget {
-  final Player player;
+  final PlayerState player;
   final bool isActive;
 
   const PlayerOnTable(this.player, {super.key, required this.isActive});
 
   @override
   Widget build(BuildContext context) {
-    return Consumer<Game>(
-      builder: (_, game, __) {
-        final score = game.roundScores[player];
+    return Consumer<GameStateProvider>(
+      builder: (_, gameStateProvider, __) {
+        final game = gameStateProvider.value;
+
+        final score = game.roundScores[player.id];
         final cardOnTable =
-            game.cardsOnTable.where((cardOnTable) => cardOnTable.player == player).firstOrNull;
+            game.cardsOnTable.where((cardOnTable) => cardOnTable.playerId == player.id).firstOrNull;
         final isStrongestCard = cardOnTable != null && game.getStrongestCard() == cardOnTable;
 
         return Center(
-          child: SizedBox(
-            width: 100,
-            height: 150,
+          child: AspectRatio(
+            aspectRatio: 100 / 150,
             child: Column(
               children: [
                 Row(
@@ -728,7 +786,7 @@ class PlayerOnTable extends StatelessWidget {
                   children: [
                     Text(player.name),
                     if (score != null) ...{
-                      Text("${score.currentScore}/${score.predictedScore}"),
+                      Text("${score.currentScore}/${score.bid}"),
                     } else ...{
                       const SizedBox(),
                     },
