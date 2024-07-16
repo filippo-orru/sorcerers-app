@@ -1,6 +1,8 @@
 import 'dart:math';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:sorcerers_app/extensions.dart';
 import 'package:sorcerers_app/game/cards.dart';
@@ -128,11 +130,25 @@ class _PlayerNamesScreenState extends State<PlayerNamesScreen> {
               const SizedBox(height: 16),
               for (final (index, player) in playerNames.indexed) ...{
                 PlayerNameField(
+                  key: ValueKey(index),
                   player: player,
                   onChanged: (value) {
                     setState(() {
                       playerNames[index] = value;
                     });
+                  },
+                  onAddNewPlayer: () {
+                    setState(() {
+                      playerNames.add("");
+                    });
+                  },
+                  onRemove: () {
+                    setState(() {
+                      playerNames.removeAt(index);
+                    });
+                  },
+                  onPlay: () {
+                    startPlaying(context);
                   },
                 ),
               },
@@ -149,14 +165,7 @@ class _PlayerNamesScreenState extends State<PlayerNamesScreen> {
               OutlinedButton.icon(
                 onPressed: playerNames.isNotEmpty
                     ? () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => GameScreen(
-                              provider: LocalGameProvider(playerNames),
-                            ),
-                          ),
-                        );
+                        startPlaying(context);
                       }
                     : null,
                 label: Text("Start game"),
@@ -168,13 +177,34 @@ class _PlayerNamesScreenState extends State<PlayerNamesScreen> {
       ),
     );
   }
+
+  void startPlaying(BuildContext context) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => GameScreen(
+          provider: LocalGameProvider(playerNames),
+        ),
+      ),
+    );
+  }
 }
 
 class PlayerNameField extends StatefulWidget {
   final String player;
   final void Function(String) onChanged;
+  final VoidCallback onAddNewPlayer;
+  final VoidCallback onRemove;
+  final VoidCallback onPlay;
 
-  const PlayerNameField({super.key, required this.player, required this.onChanged});
+  const PlayerNameField({
+    super.key,
+    required this.player,
+    required this.onChanged,
+    required this.onAddNewPlayer,
+    required this.onRemove,
+    required this.onPlay,
+  });
 
   @override
   State<PlayerNameField> createState() => _PlayerNameFieldState();
@@ -182,11 +212,23 @@ class PlayerNameField extends StatefulWidget {
 
 class _PlayerNameFieldState extends State<PlayerNameField> {
   late final TextEditingController controller;
+  late final FocusNode focusNode;
 
   @override
   void initState() {
     super.initState();
     controller = TextEditingController(text: widget.player);
+    focusNode = FocusNode(
+      onKeyEvent: (node, event) {
+        if (event is KeyDownEvent) {
+          if (controller.text.isEmpty && event.logicalKey == LogicalKeyboardKey.backspace) {
+            widget.onRemove();
+            return KeyEventResult.handled;
+          }
+        }
+        return KeyEventResult.ignored;
+      },
+    );
   }
 
   @override
@@ -208,12 +250,31 @@ class _PlayerNameFieldState extends State<PlayerNameField> {
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 16),
-      child: TextField(
-        controller: controller,
-        onChanged: (value) => widget.onChanged(value),
-        onSubmitted: null, // TODO
-        decoration: const InputDecoration(
-          hintText: "Player name",
+      child: Shortcuts(
+        shortcuts: {
+          SingleActivator(
+            LogicalKeyboardKey.enter,
+            control: defaultTargetPlatform != TargetPlatform.macOS,
+            meta: defaultTargetPlatform == TargetPlatform.macOS,
+          ): CommandEnterIntent(),
+        },
+        child: Actions(
+          actions: {
+            CommandEnterIntent: CallbackAction(onInvoke: (_) => widget.onPlay()),
+          },
+          child: TextField(
+            autofocus: true,
+            focusNode: focusNode,
+            controller: controller,
+            onChanged: (value) => widget.onChanged(value),
+            onSubmitted: (_) => widget.onAddNewPlayer(),
+            onTapOutside: (event) {
+              focusNode.unfocus();
+            },
+            decoration: const InputDecoration(
+              hintText: "Player name",
+            ),
+          ),
         ),
       ),
     );
@@ -235,6 +296,8 @@ class GameScreen extends StatelessWidget {
     );
   }
 }
+
+class CommandEnterIntent extends Intent {}
 
 class GameWidget extends StatefulWidget {
   const GameWidget({super.key});
