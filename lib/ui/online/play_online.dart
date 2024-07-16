@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import 'package:sorcerers_app/online/messages/messages_server.dart';
+import 'package:sorcerers_core/online/messages/messages_server.dart';
 import 'package:sorcerers_app/online/online_game.dart';
 import 'package:sorcerers_app/ui/widget_utils.dart';
 

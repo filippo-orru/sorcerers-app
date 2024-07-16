@@ -4,10 +4,10 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import 'package:sorcerers_app/extensions.dart';
-import 'package:sorcerers_app/game/cards.dart';
-import 'package:sorcerers_app/game/game.dart';
+import 'package:sorcerers_core/game/cards.dart';
+import 'package:sorcerers_core/game/game.dart';
 import 'package:sorcerers_app/game/providers/game_provider.dart';
-import 'package:sorcerers_app/online/messages/game_messages/game_messages_client.dart';
+import 'package:sorcerers_core/online/messages/game_messages/game_messages_client.dart';
 import 'package:sorcerers_app/ui/widget_utils.dart';
 
 class GameScreen extends StatelessWidget {

@@ -1,5 +1,5 @@
-import 'package:sorcerers_app/game/game.dart';
-import 'package:sorcerers_app/online/messages/game_messages/game_messages_client.dart';
+import 'package:sorcerers_core/game/game.dart';
+import 'package:sorcerers_core/online/messages/game_messages/game_messages_client.dart';
 
 import 'game_provider.dart';
 

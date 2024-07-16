@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:sorcerers_app/online/messages/messages_client.dart';
-import 'package:sorcerers_app/online/messages/messages_server.dart';
+import 'package:sorcerers_core/online/messages/messages_client.dart';
+import 'package:sorcerers_core/online/messages/messages_server.dart';
 import 'package:sorcerers_app/online/server_connection.dart';
 
 class OnlinePlayProvider with ChangeNotifier {

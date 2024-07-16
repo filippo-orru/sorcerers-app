@@ -140,6 +140,12 @@
       "languageVersion": "3.2"
     },
     {
+      "name": "sorcerers_core",
+      "rootUri": "../packages/core",
+      "packageUri": "lib/",
+      "languageVersion": "3.4"
+    },
+    {
       "name": "source_span",
       "rootUri": "file:///Users/ffactory/.pub-cache/hosted/pub.dev/source_span-1.10.0",
       "packageUri": "lib/",
@@ -218,7 +224,7 @@
       "languageVersion": "3.4"
     }
   ],
-  "generated": "2024-07-16T14:30:42.298103Z",
+  "generated": "2024-07-16T16:44:25.728233Z",
   "generator": "pub",
   "generatorVersion": "3.4.3",
   "flutterRoot": "file:///Users/ffactory/fvm/versions/stable",
