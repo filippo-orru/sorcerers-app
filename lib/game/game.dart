@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:sorcerers_app/messages/game_messages/game_messages_client.dart';
+import 'package:sorcerers_app/online/messages/game_messages/game_messages_client.dart';
 
 import 'cards.dart';
 
@@ -165,7 +165,7 @@ class Game with ChangeNotifier {
       throw Exception("Not the player's turn");
     }
 
-    roundScores[player] = RoundScore(player, bid);
+    roundScores[player] = RoundScore(player.id, bid);
 
     if (roundScores.length == players.length) {
       roundStage = RoundStage.playing;
@@ -261,7 +261,9 @@ class Game with ChangeNotifier {
 }
 
 class GameScore {
-  final Map<int, Map<PlayerId, RoundScore>> _scores = {};
+  final Map<int, Map<PlayerId, RoundScore>> _scores;
+
+  GameScore({Map<int, Map<PlayerId, RoundScore>>? scores}) : _scores = scores ?? {};
 
   int get length => _scores.length;
 
@@ -274,6 +276,46 @@ class GameScore {
     _scores.forEach((i, scores) => result += scores[playerId]!.getPoints());
     return result;
   }
+
+  Map<String, dynamic> toJson() {
+    return {
+      "scores": _scores.map((key, value) => MapEntry(
+            key.toString(),
+            value.map((key, value) => MapEntry(
+                  key,
+                  value.toJson(),
+                )),
+          )),
+    };
+  }
+
+  static GameScore fromJson(Map<String, dynamic> map) {
+    final scores = map["scores"];
+    if (scores == null || scores is! Map<String, dynamic>) {
+      return GameScore();
+    }
+
+    final scoreMap = <int, Map<PlayerId, RoundScore>>{};
+    scores.forEach((key, value) {
+      if (value is! Map<String, dynamic>) {
+        return;
+      }
+
+      final roundScores = <PlayerId, RoundScore>{};
+      value.forEach((key, value) {
+        if (value is! Map<String, dynamic>) {
+          return;
+        }
+
+        final score = RoundScore.fromJson(value)!;
+        roundScores[score.playerId] = score;
+      });
+
+      scoreMap[int.parse(key)] = roundScores;
+    });
+
+    return GameScore(scores: scoreMap);
+  }
 }
 
 enum RoundStage {
@@ -285,12 +327,12 @@ enum RoundStage {
 }
 
 class RoundScore {
-  final Player player;
+  final PlayerId playerId;
   final int bid;
 
-  RoundScore(this.player, this.bid);
+  RoundScore(this.playerId, this.bid, {this.currentScore = 0});
 
-  int currentScore = 0;
+  int currentScore;
 
   void wonTrick() {
     currentScore += 1;
@@ -302,6 +344,25 @@ class RoundScore {
     } else {
       return -10 * (currentScore - bid).abs();
     }
+  }
+
+  static RoundScore? fromJson(Map<String, dynamic> map) {
+    final playerId = map["playerId"];
+    final bid = map["bid"];
+    final currentScore = map["currentScore"];
+    if (playerId == null || bid == null || currentScore == null) {
+      return null;
+    }
+
+    return RoundScore(playerId, bid, currentScore: currentScore);
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      "playerId": playerId,
+      "bid": bid,
+      "currentScore": currentScore,
+    };
   }
 }
 
@@ -332,6 +393,13 @@ class CardOnTableState {
   final GameCard card;
 
   CardOnTableState(this.playerId, this.card);
+
+  Map<String, dynamic> toJson() {
+    return {
+      "playerId": playerId,
+      "card": card.toJson(),
+    };
+  }
 }
 
 class GameState {
@@ -349,7 +417,7 @@ class GameState {
   final CardColor? leadColor;
   final Map<PlayerId, RoundScore?> roundScores;
 
-  final void Function(GameMessageClient message) sendIntent;
+  void Function(GameMessageClient message) sendIntent;
 
   GameState(
     this.players,
@@ -403,5 +471,49 @@ class GameState {
       }
     }
     return winningCard;
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      "players": players.map((playerId, playerState) => MapEntry(playerId, playerState)),
+      "roundNumber": roundNumber,
+      "gameScore": gameScore.toJson(),
+      "roundStage": roundStage.index,
+      "cardsOnTable": cardsOnTable.map((cardOnTable) => cardOnTable.toJson()).toList(),
+      "currentPlayerId": currentPlayerId,
+      "trump": trump?.toJson(),
+      "trumpColor": trumpColor?.name,
+      "leadColor": leadColor?.name,
+      "roundScores":
+          roundScores.map((playerId, roundScore) => MapEntry(playerId, roundScore?.toJson())),
+    };
+  }
+
+  static GameState fromJson(Map<String, dynamic> gameState) {
+    var cardsOnTable = gameState["cardsOnTable"] as List<dynamic>;
+    var playersRaw = gameState["players"] as Map<String, dynamic>;
+    var players = Map.fromEntries(
+      playersRaw.entries.map((entry) {
+        final playerId = entry.key;
+        final player = entry.value;
+        return MapEntry(playerId, PlayerState(playerId, player["name"], []));
+      }),
+    );
+    return GameState(
+      players,
+      gameState["roundNumber"],
+      GameScore.fromJson(gameState["gameScore"]),
+      RoundStage.values[gameState["roundStage"]],
+      cardsOnTable
+          .map((cardOnTable) =>
+              CardOnTableState(cardOnTable["playerId"], GameCard.fromJson(cardOnTable["card"])!))
+          .toList(),
+      gameState["currentPlayerId"] as String,
+      GameCard.fromJson(gameState["trump"]),
+      CardColor.fromJson(gameState["trumpColor"]),
+      CardColor.fromJson(gameState["leadColor"]),
+      gameState["roundScores"],
+      (_) {}, // Will be set later
+    );
   }
 }

@@ -1,10 +1,7 @@
-import 'package:flutter/material.dart';
 import 'package:sorcerers_app/game/game.dart';
-import 'package:sorcerers_app/messages/game_messages/game_messages_client.dart';
+import 'package:sorcerers_app/online/messages/game_messages/game_messages_client.dart';
 
-abstract class GameStateProvider extends ChangeNotifier {
-  GameState get value;
-}
+import 'game_provider.dart';
 
 class LocalGameProvider extends GameStateProvider {
   late final Game game;

@@ -4,11 +4,13 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+
 import 'package:sorcerers_app/extensions.dart';
 import 'package:sorcerers_app/game/cards.dart';
 import 'package:sorcerers_app/game/game.dart';
+import 'package:sorcerers_app/game/providers/game_provider.dart';
 import 'package:sorcerers_app/game/providers/local_game_provider.dart';
-import 'package:sorcerers_app/messages/game_messages/game_messages_client.dart';
+import 'package:sorcerers_app/online/messages/game_messages/game_messages_client.dart';
 
 void main() {
   runApp(const SorcerersApp());

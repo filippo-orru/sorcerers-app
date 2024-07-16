@@ -10,6 +10,24 @@ sealed class GameCard {
   Color get backgroundColor;
 
   Map<String, dynamic> toJson();
+
+  static GameCard? fromJson(Map<String, dynamic> map) {
+    final id = map["id"];
+    if (id == null) {
+      return null;
+    }
+
+    switch (id) {
+      case "NumberCard":
+        return NumberCard.fromJson(map);
+      case "WizardCard":
+        return WizardCard.fromJson(map);
+      case "JesterCard":
+        return JesterCard.fromJson(map);
+      default:
+        return null;
+    }
+  }
 }
 
 enum CardColor {
@@ -24,6 +42,10 @@ enum CardColor {
         CardColor.green => Colors.green.shade200,
         CardColor.blue => Colors.blue.shade200,
       };
+
+  static CardColor fromJson(String color) {
+    return CardColor.values.firstWhere((element) => element.toString() == color);
+  }
 }
 
 class NumberCard extends GameCard {
@@ -69,8 +91,21 @@ class NumberCard extends GameCard {
   Map<String, dynamic> toJson() => {
         "id": "NumberCard",
         "number": number,
-        "color": color.toString(),
+        "color": color.name,
       };
+
+  static GameCard? fromJson(Map<String, dynamic> map) {
+    final number = map["number"];
+    if (number == null) {
+      return null;
+    }
+
+    final color = map["color"];
+    if (color == null) {
+      return null;
+    }
+    return NumberCard(number, CardColor.fromJson(color));
+  }
 }
 
 class WizardCard extends GameCard {
@@ -99,6 +134,10 @@ class WizardCard extends GameCard {
   Map<String, dynamic> toJson() => {
         "id": "WizardCard",
       };
+
+  static GameCard? fromJson(Map<String, dynamic> map) {
+    return WizardCard();
+  }
 }
 
 class JesterCard extends GameCard {
@@ -120,4 +159,8 @@ class JesterCard extends GameCard {
   Map<String, dynamic> toJson() => {
         "id": "JesterCard",
       };
+
+  static GameCard? fromJson(Map<String, dynamic> map) {
+    return JesterCard();
+  }
 }
