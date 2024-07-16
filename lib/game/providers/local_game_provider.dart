@@ -13,15 +13,7 @@ class LocalGameProvider extends GameStateProvider {
   }
 
   void _onMessage(GameMessageClient message) {
-    var _ = switch (message) {
-      PlayCard() => game.playCard(game.currentPlayer, message.card),
-      StartNewRound() => game.startNewRound(incrementRound: true),
-      ShuffleDeck() => game.shuffleAndGiveCards(),
-      SetTrumpColor() => game.setTrumpColor(message.color),
-      SetBid() => game.setBid(game.currentPlayer, message.bid),
-      ReadyForNextTrick() => game.readyForNextTrick(),
-      LeaveGame() => game.stop(),
-    };
+    game.onMessage(message);
   }
 
   void _onGameUpdate() {
