@@ -3,12 +3,12 @@ import 'package:sorcerers_app/online/messages/messages_client.dart';
 import 'package:sorcerers_app/online/messages/messages_server.dart';
 import 'package:sorcerers_app/online/server_connection.dart';
 
-class OnlineGame with ChangeNotifier {
+class OnlinePlayProvider with ChangeNotifier {
   late ServerConnection connection;
 
-  LobbyState lobbyState = Idle();
+  LobbyState? lobbyState;
 
-  OnlineGame() {
+  OnlinePlayProvider() {
     connection = ServerConnection(_onMessage);
     connection.initializeConnection();
   }
@@ -18,6 +18,10 @@ class OnlineGame with ChangeNotifier {
       StateUpdate() => lobbyState = message.lobbyState,
     };
     notifyListeners();
+  }
+
+  void createLobby(String name) {
+    connection.send(CreateLobby(name));
   }
 
   void joinLobby(String name) {

@@ -45,11 +45,11 @@ sealed class LobbyState {
 
     switch (id) {
       case "Idle":
-        return Idle();
+        return LobbyStateIdle.fromJsonImpl(map);
       case "InLobby":
         return InLobby.fromJsonImpl(map);
       case "Playing":
-        return Playing.fromJsonImpl(map);
+        return LobbyStatePlaying.fromJsonImpl(map);
       default:
         throw DeserializationError("Unknown lobby state id: $id");
     }
@@ -58,12 +58,44 @@ sealed class LobbyState {
   Map<String, dynamic> toJson();
 }
 
-class Idle extends LobbyState {
+class LobbyStateIdle extends LobbyState {
+  final List<LobbyData> lobbies;
+
+  LobbyStateIdle(this.lobbies);
+
   @override
   Map<String, dynamic> toJson() {
     return {
       "id": "Idle",
+      "lobbies": lobbies.map((it) => it.toJson()).toList(),
     };
+  }
+
+  static LobbyState fromJsonImpl(Map<String, dynamic> map) {
+    return LobbyStateIdle(
+      (map["lobbies"] as List<dynamic>).map((it) => LobbyData.fromJson(it)).toList(),
+    );
+  }
+}
+
+class LobbyData {
+  final String name;
+  final int playerCount;
+
+  LobbyData(this.name, this.playerCount);
+
+  Map<String, dynamic> toJson() {
+    return {
+      "name": name,
+      "playerCount": playerCount,
+    };
+  }
+
+  static LobbyData fromJson(Map<String, dynamic> map) {
+    final name = map["name"] as String;
+    final playerCount = map["playerCount"] as int;
+
+    return LobbyData(name, playerCount);
   }
 }
 
@@ -117,15 +149,15 @@ class PlayerInLobby {
   }
 }
 
-class Playing extends LobbyState {
+class LobbyStatePlaying extends LobbyState {
   final GameState gameState;
 
-  Playing(this.gameState);
+  LobbyStatePlaying(this.gameState);
 
   static LobbyState fromJsonImpl(Map<String, dynamic> map) {
     final gameState = map["gameState"] as Map<String, dynamic>;
 
-    return Playing(GameState.fromJson(gameState));
+    return LobbyStatePlaying(GameState.fromJson(gameState));
   }
 
   @override

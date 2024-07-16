@@ -15,8 +15,13 @@ class ServerConnection {
   bool get okay => channel != null && channel!.closeCode == null;
 
   void initializeConnection() async {
-    final channel = WebSocketChannel.connect(Uri.parse(wsProtocol + host));
-    await channel.ready;
+    final channel = WebSocketChannel.connect(Uri.parse("$wsProtocol$host/ws"));
+    try {
+      await channel.ready;
+    } catch (e) {
+      debugPrint("Error connecting to websocket: $e");
+      return;
+    }
     channel.stream.listen(onData, onError: onError, cancelOnError: true);
 
     this.channel = channel;
