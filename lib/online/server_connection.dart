@@ -1,4 +1,6 @@
+import 'dart:async';
 import 'dart:convert';
+import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:sorcerers_app/constants.dart';
@@ -6,13 +8,24 @@ import 'package:sorcerers_core/online/messages/messages_client.dart';
 import 'package:sorcerers_core/online/messages/messages_server.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 
-class ServerConnection {
+class ServerConnection with ChangeNotifier {
   final void Function(ServerMessage message) onMessage;
 
   ServerConnection(this.onMessage);
 
   WebSocketChannel? channel;
+
   bool get okay => channel != null && channel!.closeCode == null;
+
+  Timer? _connectionLostLongTimer;
+  bool _connectionLostLongTime = false;
+  bool get connectionLostLongTime => _connectionLostLongTime;
+  set connectionLostLongTime(bool value) {
+    _connectionLostLongTime = value;
+    notifyListeners();
+  }
+
+  int _connectTryCount = 0;
 
   void initializeConnection() async {
     final channel = WebSocketChannel.connect(Uri.parse("$wsProtocol://$host/ws"));
@@ -22,9 +35,10 @@ class ServerConnection {
       debugPrint("Error connecting to websocket");
       debugPrint(e.toString());
       debugPrintStack();
+      _close();
       return;
     }
-    channel.stream.listen(onData, onError: onError, cancelOnError: true);
+    channel.stream.listen(onData, onError: onError, onDone: onDone, cancelOnError: true);
 
     this.channel = channel;
   }
@@ -32,7 +46,7 @@ class ServerConnection {
   void send(ClientMessage message) {
     final json = jsonEncode(message.toJson());
 
-    channel!.sink.add(json);
+    channel?.sink.add(json);
   }
 
   void onData(data) {
@@ -49,7 +63,29 @@ class ServerConnection {
     }
   }
 
+  void onDone() {
+    _close();
+  }
+
   void onError(data) {
-    channel = null; // TODO close? retry?
+    debugPrint("Websocket received error, closing");
+    _close();
+  }
+
+  void _close() async {
+    channel = null;
+    if (!connectionLostLongTime) {
+      _connectionLostLongTimer ??= Timer(
+        const Duration(seconds: 2),
+        () {
+          connectionLostLongTime = true;
+        },
+      );
+    }
+    notifyListeners();
+
+    await Future.delayed(Duration(seconds: min(_connectTryCount, 5)));
+    _connectTryCount += 1;
+    initializeConnection();
   }
 }

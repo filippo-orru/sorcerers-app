@@ -1,6 +1,8 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:provider/provider.dart';
+import 'package:sorcerers_app/game/providers/game_provider.dart';
 
 import 'package:sorcerers_app/game/providers/local_game_provider.dart';
 import 'package:sorcerers_app/ui/game_screen.dart';
@@ -20,60 +22,84 @@ class _PlayerNamesScreenState extends State<PlayerNamesScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       body: MaxWidth(
-        maxWidth: 400,
+        maxWidth: 400 + 48 * 2,
         child: Padding(
           padding: const EdgeInsets.all(16),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: <Widget>[
-              const Text(
-                "Who's playing?",
-                style: TextStyle(fontSize: 24),
+              Row(
+                children: [
+                  SizedBox(
+                    width: 48,
+                    child: Center(
+                      child: IconButton(
+                        icon: Icon(Icons.arrow_back),
+                        onPressed: () {
+                          Navigator.of(context).pop();
+                        },
+                      ),
+                    ),
+                  ),
+                  Text(
+                    "Who's playing?",
+                    style: TextStyle(fontSize: 24),
+                  ),
+                ],
               ),
               const SizedBox(height: 16),
-              for (final (index, player) in playerNames.indexed) ...{
-                PlayerNameField(
-                  key: ValueKey(index),
-                  player: player,
-                  onChanged: (value) {
-                    setState(() {
-                      playerNames[index] = value;
-                    });
-                  },
-                  onAddNewPlayer: () {
-                    setState(() {
-                      playerNames.add("");
-                    });
-                  },
-                  onRemove: () {
-                    setState(() {
-                      playerNames.removeAt(index);
-                    });
-                  },
-                  onPlay: () {
-                    startPlaying(context);
-                  },
+              Padding(
+                padding: EdgeInsets.symmetric(horizontal: 48),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: <Widget>[
+                    for (final (index, player) in playerNames.indexed) ...{
+                      PlayerNameField(
+                        key: ValueKey(index),
+                        player: player,
+                        onChanged: (value) {
+                          setState(() {
+                            playerNames[index] = value;
+                          });
+                        },
+                        onAddNewPlayer: () {
+                          setState(() {
+                            playerNames.add("");
+                          });
+                        },
+                        onRemove: () {
+                          setState(() {
+                            playerNames.removeAt(index);
+                          });
+                        },
+                        onPlay: () {
+                          startPlaying(context);
+                        },
+                      ),
+                    },
+                    OutlinedButton.icon(
+                      onPressed: () {
+                        setState(() {
+                          playerNames.add("");
+                        });
+                      },
+                      label: Text("Add"),
+                      icon: Icon(Icons.add),
+                    ),
+                    const SizedBox(height: 64),
+                    OutlinedButton.icon(
+                      onPressed: playerNames.isNotEmpty
+                          ? () {
+                              startPlaying(context);
+                            }
+                          : null,
+                      label: Text("Start game"),
+                      icon: Icon(Icons.play_arrow_outlined),
+                    ),
+                  ],
                 ),
-              },
-              OutlinedButton.icon(
-                onPressed: () {
-                  setState(() {
-                    playerNames.add("");
-                  });
-                },
-                label: SizedBox(),
-                icon: Icon(Icons.add),
-              ),
-              const SizedBox(height: 64),
-              OutlinedButton.icon(
-                onPressed: playerNames.isNotEmpty
-                    ? () {
-                        startPlaying(context);
-                      }
-                    : null,
-                label: Text("Start game"),
-                icon: Icon(Icons.play_arrow_rounded),
               ),
             ],
           ),
@@ -86,9 +112,7 @@ class _PlayerNamesScreenState extends State<PlayerNamesScreen> {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => GameScreen(
-          provider: LocalGameProvider(playerNames),
-        ),
+        builder: (context) => LocalGameScreen(playerNames),
       ),
     );
   }
@@ -181,6 +205,23 @@ class _PlayerNameFieldState extends State<PlayerNameField> {
           ),
         ),
       ),
+    );
+  }
+}
+
+class LocalGameScreen extends StatelessWidget {
+  final List<String> playerNames;
+
+  const LocalGameScreen(
+    this.playerNames, {
+    super.key,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return ChangeNotifierProvider<GameStateProvider>.value(
+      value: LocalGameProvider(playerNames),
+      child: GameScreen(),
     );
   }
 }

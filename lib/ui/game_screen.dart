@@ -11,17 +11,12 @@ import 'package:sorcerers_core/online/messages/game_messages/game_messages_clien
 import 'package:sorcerers_app/ui/widget_utils.dart';
 
 class GameScreen extends StatelessWidget {
-  final GameStateProvider provider;
-
-  const GameScreen({super.key, required this.provider});
+  const GameScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: ChangeNotifierProvider<GameStateProvider>.value(
-        value: provider,
-        child: const GameWidget(),
-      ),
+      body: const GameWidget(),
     );
   }
 }
