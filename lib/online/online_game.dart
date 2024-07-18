@@ -9,8 +9,8 @@ class OnlinePlayProvider with ChangeNotifier {
 
   LobbyState? lobbyState;
 
-  String? get name => globalPrefs.getString('name');
-  set name(String? value) {
+  String? get storedName => globalPrefs.getString('name');
+  set storedName(String? value) {
     globalPrefs.setString('name', value!);
     notifyListeners();
   }
@@ -37,8 +37,8 @@ class OnlinePlayProvider with ChangeNotifier {
       return;
     }
 
-    if (name != null) {
-      connection.send(SetName(name!));
+    if (storedName != null) {
+      connection.send(SetName(storedName!));
     }
   }
 

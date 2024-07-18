@@ -16,14 +16,9 @@ class OnlinePlayWrapper extends StatefulWidget {
 }
 
 class _OnlinePlayWrapperState extends State<OnlinePlayWrapper> {
-  final _nameEditingController = TextEditingController();
-  bool _nameMustBeLonger = false;
-
-  bool _hasSentName = false;
-
   Widget buildContent(LobbyState? lobbyState) {
     return switch (lobbyState) {
-      null => Scaffold(body: const Center(child: CircularProgressIndicator())),
+      null => NameSelectionScreen(key: ValueKey("name")),
       LobbyStateIdle() => LobbySelectionScreen(key: ValueKey("idle"), lobbyState: lobbyState),
       LobbyStateInLobby() => InLobbyScreen(key: ValueKey("inLobby"), lobbyState: lobbyState),
       LobbyStatePlaying() => PlayOnlineGameScreen(key: ValueKey("playing"))
@@ -32,89 +27,125 @@ class _OnlinePlayWrapperState extends State<OnlinePlayWrapper> {
 
   @override
   Widget build(BuildContext context) {
-    return Consumer<OnlinePlayProvider>(
-      builder: (_, provider, __) {
-        void setName() {
-          final value = _nameEditingController.text;
-          if (value.length <= 3) {
-            setState(() {
-              _nameMustBeLonger = true;
-            });
-            return;
-          }
-          provider.name = value;
-          provider.sendNewName();
-        }
-
-        if (provider.connection.okay && !_hasSentName) {
-          provider.sendNewName();
-          _hasSentName = true;
-        }
-
-        if (provider.name == null) {
-          return Stack(
-            children: [
-              ModalBarrier(color: Theme.of(context).colorScheme.scrim.withOpacity(0.7)),
-              MaxWidth(
-                maxWidth: 400,
-                child: Center(
-                  child: Card(
-                    child: Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Text("What's your name?"),
-                          const SizedBox(height: 16),
-                          TextField(
-                            autofocus: true,
-                            inputFormatters: [
-                              FilteringTextInputFormatter.allow(RegExp(r"[a-zA-Z0-9]*")),
-                            ],
-                            maxLength: 16,
-                            decoration: InputDecoration(
-                              labelText: "Name",
-                              error: _nameMustBeLonger ? Text("Name must be longer") : null,
-                            ),
-                            controller: _nameEditingController,
-                            onChanged: (_) {
-                              if (_nameMustBeLonger) {
-                                setState(() {
-                                  _nameMustBeLonger = false;
-                                });
-                              }
-                            },
-                            onSubmitted: (_) {
-                              setName();
-                            },
-                          ),
-                          const SizedBox(height: 8),
-                          const Text(
-                            "Only alphanumeric characters are allowed. This name will be visible to other players.",
-                          ),
-                          const SizedBox(height: 16),
-                          OutlinedButton(
-                            onPressed: () {
-                              setName();
-                            },
-                            child: Text("Submit"),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          );
-        } else {
+    return RequireConnection(
+      child: Consumer<OnlinePlayProvider>(
+        builder: (_, provider, __) {
           final lobbyState = provider.lobbyState;
           return AnimatedSwitcher(
             duration: Duration(milliseconds: 200),
             child: buildContent(lobbyState),
           );
-        }
-      },
+        },
+      ),
+    );
+  }
+}
+
+class NameSelectionScreen extends StatefulWidget {
+  const NameSelectionScreen({super.key});
+
+  @override
+  State<NameSelectionScreen> createState() => _NameSelectionScreenState();
+}
+
+class _NameSelectionScreenState extends State<NameSelectionScreen> {
+  final _nameEditingController = TextEditingController();
+  bool _nameMustBeLonger = false;
+
+  @override
+  void initState() {
+    super.initState();
+
+    context.read<OnlinePlayProvider>().sendNewName();
+  }
+
+  @override
+  void didUpdateWidget(covariant NameSelectionScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+
+    context.read<OnlinePlayProvider>().sendNewName();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: Consumer<OnlinePlayProvider>(
+        builder: (_, provider, __) {
+          void setName() {
+            final value = _nameEditingController.text;
+            if (value.length <= 3) {
+              setState(() {
+                _nameMustBeLonger = true;
+              });
+              return;
+            }
+            provider.storedName = value;
+            provider.sendNewName();
+          }
+
+          if (provider.storedName == null) {
+            return Stack(
+              children: [
+                ModalBarrier(color: Theme.of(context).colorScheme.scrim.withOpacity(0.7)),
+                MaxWidth(
+                  maxWidth: 400,
+                  child: Center(
+                    child: Card(
+                      child: Padding(
+                        padding: const EdgeInsets.all(16),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Text("What's your name?"),
+                            const SizedBox(height: 16),
+                            TextField(
+                              autofocus: true,
+                              inputFormatters: [
+                                FilteringTextInputFormatter.allow(RegExp(r"[a-zA-Z0-9]*")),
+                              ],
+                              maxLength: 16,
+                              decoration: InputDecoration(
+                                labelText: "Name",
+                                error: _nameMustBeLonger ? Text("Name must be longer") : null,
+                              ),
+                              controller: _nameEditingController,
+                              onChanged: (_) {
+                                if (_nameMustBeLonger) {
+                                  setState(() {
+                                    _nameMustBeLonger = false;
+                                  });
+                                }
+                              },
+                              onSubmitted: (_) {
+                                setName();
+                              },
+                            ),
+                            const SizedBox(height: 8),
+                            const Text(
+                              "Only alphanumeric characters are allowed. This name will be visible to other players.",
+                            ),
+                            const SizedBox(height: 16),
+                            OutlinedButton(
+                              onPressed: () {
+                                setName();
+                              },
+                              child: Text("Submit"),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            );
+          } else {
+            return const Center(
+              child: CircularProgressIndicator(),
+            );
+          }
+        },
+      ),
     );
   }
 }
@@ -136,107 +167,104 @@ class _LobbySelectionScreenState extends State<LobbySelectionScreen> {
     return Consumer<OnlinePlayProvider>(
       builder: (_, provider, __) {
         return Scaffold(
-          body: RequireConnection(
-            child: Stack(
-              children: [
-                MaxWidth(
-                  maxWidth: 400 + 48 * 2,
-                  child: Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: <Widget>[
-                        Row(
-                          children: [
-                            SizedBox(
-                              width: 48,
-                              child: Center(
-                                child: IconButton(
-                                  icon: Icon(Icons.arrow_back),
-                                  onPressed: () {
-                                    Navigator.of(context).pop();
-                                  },
-                                ),
+          body: Stack(
+            children: [
+              MaxWidth(
+                maxWidth: 400 + 48 * 2,
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: <Widget>[
+                      Row(
+                        children: [
+                          SizedBox(
+                            width: 48,
+                            child: Center(
+                              child: IconButton(
+                                icon: Icon(Icons.arrow_back),
+                                onPressed: () {
+                                  Navigator.of(context).pop();
+                                },
                               ),
                             ),
-                            Text("Select a lobby", style: TextStyle(fontSize: 24)),
-                          ],
-                        ),
-                        const SizedBox(height: 16),
-                        Padding(
-                          padding: EdgeInsets.symmetric(horizontal: 48),
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: <Widget>[
-                              if (widget.lobbyState.lobbies.isNotEmpty) ...{
-                                for (final lobby in widget.lobbyState.lobbies) ...{
-                                  OutlinedButton.icon(
-                                    onPressed: () {
-                                      provider.joinLobby(lobby.name);
-                                    },
-                                    icon: Icon(Icons.arrow_right_sharp),
-                                    label: Row(
-                                      key: ValueKey(lobby.name),
-                                      children: [
-                                        Text(lobby.name),
-                                        const Spacer(),
-                                        Icon(Icons.person_sharp, size: 14),
-                                        const SizedBox(width: 4),
-                                        Text("${lobby.playerCount}")
-                                      ],
-                                    ),
-                                  ),
-                                },
-                              } else if (_newLobbyNameController == null) ...{
-                                Text("No lobbies available, create one instead!"),
-                              },
-                              if (_newLobbyNameController == null) ...{
-                                SizedBox(height: 16),
+                          ),
+                          Text("Select a lobby", style: TextStyle(fontSize: 24)),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                      Padding(
+                        padding: EdgeInsets.symmetric(horizontal: 48),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: <Widget>[
+                            if (widget.lobbyState.lobbies.isNotEmpty) ...{
+                              for (final lobby in widget.lobbyState.lobbies) ...{
                                 OutlinedButton.icon(
                                   onPressed: () {
-                                    setState(
-                                        () => _newLobbyNameController = TextEditingController());
+                                    provider.joinLobby(lobby.name);
                                   },
-                                  icon: const Icon(Icons.add),
-                                  label: const Text("Create a new lobby"),
-                                )
-                              } else ...{
-                                TextField(
-                                  autofocus: true,
-                                  controller: _newLobbyNameController,
-                                  maxLength: 24,
-                                  decoration: const InputDecoration(
-                                    labelText: "Lobby name",
+                                  icon: Icon(Icons.arrow_right_sharp),
+                                  label: Row(
+                                    key: ValueKey(lobby.name),
+                                    children: [
+                                      Text(lobby.name),
+                                      const Spacer(),
+                                      Icon(Icons.person_sharp, size: 14),
+                                      const SizedBox(width: 4),
+                                      Text("${lobby.playerCount}")
+                                    ],
                                   ),
-                                  onSubmitted: (value) {
-                                    provider.createLobby(value);
-                                    setState(() => _newLobbyNameController = null);
-                                  },
-                                ),
-                                const SizedBox(height: 16),
-                                OutlinedButton(
-                                  onPressed: () {
-                                    if (_newLobbyNameController!.text.length <= 3) {
-                                      return;
-                                    }
-
-                                    provider.createLobby(_newLobbyNameController!.text);
-                                    setState(() => _newLobbyNameController = null);
-                                  },
-                                  child: const Text("Create lobby"),
                                 ),
                               },
-                            ],
-                          ),
+                            } else if (_newLobbyNameController == null) ...{
+                              Text("No lobbies available, create one instead!"),
+                            },
+                            if (_newLobbyNameController == null) ...{
+                              SizedBox(height: 16),
+                              OutlinedButton.icon(
+                                onPressed: () {
+                                  setState(() => _newLobbyNameController = TextEditingController());
+                                },
+                                icon: const Icon(Icons.add),
+                                label: const Text("Create a new lobby"),
+                              )
+                            } else ...{
+                              TextField(
+                                autofocus: true,
+                                controller: _newLobbyNameController,
+                                maxLength: 24,
+                                decoration: const InputDecoration(
+                                  labelText: "Lobby name",
+                                ),
+                                onSubmitted: (value) {
+                                  provider.createLobby(value);
+                                  setState(() => _newLobbyNameController = null);
+                                },
+                              ),
+                              const SizedBox(height: 16),
+                              OutlinedButton(
+                                onPressed: () {
+                                  if (_newLobbyNameController!.text.length <= 3) {
+                                    return;
+                                  }
+
+                                  provider.createLobby(_newLobbyNameController!.text);
+                                  setState(() => _newLobbyNameController = null);
+                                },
+                                child: const Text("Create lobby"),
+                              ),
+                            },
+                          ],
                         ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
         );
       },
@@ -261,16 +289,32 @@ class _RequireConnectionState extends State<RequireConnection> {
         if (provider.connection.okay) {
           return widget.child;
         } else {
-          return Center(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                CircularProgressIndicator(),
-                if (provider.connection.connectionLostLongTime) ...{
-                  SizedBox(height: 16),
-                  Text("Waiting for connection..."),
-                },
-              ],
+          return Scaffold(
+            body: Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  CircularProgressIndicator(),
+                  AnimatedOpacity(
+                    opacity: provider.connection.connectionLostLongTime ? 1 : 0,
+                    duration: Duration(seconds: 1),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        SizedBox(height: 16),
+                        Text("Waiting for connection..."),
+                        SizedBox(height: 16),
+                        OutlinedButton(
+                            onPressed: () {
+                              provider.leaveLobby();
+                              Navigator.of(context).popUntil((r) => r.isFirst);
+                            },
+                            child: Text("Leave"))
+                      ],
+                    ),
+                  ),
+                ],
+              ),
             ),
           );
         }
@@ -288,7 +332,7 @@ class InLobbyScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final provider = context.watch<OnlinePlayProvider>();
 
-    var me = lobbyState.players.firstWhere((player) => player.name == provider.name!);
+    var me = lobbyState.players.firstWhere((player) => player.name == lobbyState.myName);
     final ready = me.ready;
 
     return Scaffold(
@@ -309,7 +353,7 @@ class InLobbyScreen extends StatelessWidget {
               for (final (i, player) in lobbyState.players.indexed) ...{
                 OutlinedButton.icon(
                   onPressed: () {
-                    if (provider.name == player.name) {
+                    if (lobbyState.myName == player.name) {
                       provider.readyToPlay(!ready);
                     }
                   },
@@ -325,14 +369,14 @@ class InLobbyScreen extends StatelessWidget {
                   icon: Padding(
                     padding: const EdgeInsets.symmetric(vertical: 4),
                     child: Icon(
-                      provider.name == player.name
+                      lobbyState.myName == player.name
                           ? Icons.person_sharp
                           : Icons.person_outline_sharp,
                     ),
                   ),
                   label: Row(
                     children: [
-                      Text(player.name + (provider.name == player.name ? " (you)" : "")),
+                      Text(player.name + (lobbyState.myName == player.name ? " (you)" : "")),
                       const Spacer(),
                       Icon(player.ready ? Icons.check_box_sharp : Icons.check_sharp),
                     ],

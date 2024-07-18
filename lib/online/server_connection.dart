@@ -39,8 +39,10 @@ class ServerConnection with ChangeNotifier {
       return;
     }
     channel.stream.listen(onData, onError: onError, onDone: onDone, cancelOnError: true);
+    _connectTryCount = 0;
 
     this.channel = channel;
+    notifyListeners();
   }
 
   void send(ClientMessage message) {
