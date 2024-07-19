@@ -16,6 +16,7 @@ class ServerConnection with ChangeNotifier {
   WebSocketChannel? channel;
 
   bool get okay => channel != null && channel!.closeCode == null;
+  Timer? _reconnectTimer;
 
   Timer? _connectionLostLongTimer;
   bool _connectionLostLongTime = false;
@@ -48,6 +49,7 @@ class ServerConnection with ChangeNotifier {
   void send(ClientMessage message) {
     final json = jsonEncode(message.toJson());
 
+    debugPrint(">> $json");
     channel?.sink.add(json);
   }
 
@@ -56,6 +58,7 @@ class ServerConnection with ChangeNotifier {
       return;
     }
 
+    debugPrint("<< $data");
     final map = jsonDecode(data);
     try {
       final message = ServerMessage.fromJson(map);
@@ -86,8 +89,13 @@ class ServerConnection with ChangeNotifier {
     }
     notifyListeners();
 
-    await Future.delayed(Duration(seconds: min(_connectTryCount, 5)));
-    _connectTryCount += 1;
-    initializeConnection();
+    _reconnectTimer ??= Timer(
+      Duration(seconds: min(_connectTryCount, 5)),
+      () {
+        _connectTryCount += 1;
+        initializeConnection();
+        _reconnectTimer = null;
+      },
+    );
   }
 }

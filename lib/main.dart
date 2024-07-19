@@ -42,6 +42,12 @@ class SorcerersApp extends StatelessWidget {
                     buttonTheme: ButtonThemeData(
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.zero),
                     ),
+                    filledButtonTheme: FilledButtonThemeData(
+                      style: ButtonStyle(
+                        shape: WidgetStateProperty.all(
+                            RoundedRectangleBorder(borderRadius: BorderRadius.zero)),
+                      ),
+                    ),
                     outlinedButtonTheme: OutlinedButtonThemeData(
                       style: ButtonStyle(
                         shape: WidgetStateProperty.all(

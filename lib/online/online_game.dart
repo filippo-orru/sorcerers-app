@@ -21,14 +21,17 @@ class OnlinePlayProvider with ChangeNotifier {
     connection.addListener(() {
       notifyListeners();
     });
-
-    sendNewName();
   }
 
   void _onMessage(ServerMessage message) {
-    var _ = switch (message) {
-      StateUpdate() => lobbyState = message.lobbyState,
-    };
+    switch (message) {
+      case StateUpdate():
+        lobbyState = message.lobbyState;
+        if (lobbyState == null) {
+          sendNewName();
+        }
+        break;
+    }
     notifyListeners();
   }
 
