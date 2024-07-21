@@ -2,7 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:math';
 
-import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:sorcerers_app/constants.dart';
 import 'package:sorcerers_core/online/messages/messages_client.dart';
 import 'package:sorcerers_core/online/messages/messages_server.dart';
@@ -34,9 +34,13 @@ class ServerConnection with ChangeNotifier {
     try {
       await channel.ready;
     } on Exception catch (e) {
-      debugPrint("Error connecting to websocket");
-      debugPrint(e.toString());
-      debugPrintStack();
+      if (e is WebSocketChannelException) {
+        debugPrint("Couldn't connect to websocket");
+      } else {
+        debugPrint("Error while connecting to websocket");
+        debugPrint(e.toString());
+        debugPrintStack();
+      }
       _close();
       return;
     }
@@ -62,11 +66,15 @@ class ServerConnection with ChangeNotifier {
 
     debugPrint("<< $data");
     final map = jsonDecode(data);
-    try {
-      final message = ServerMessage.fromJson(map);
-      onMessage(message);
-    } catch (e) {
-      debugPrint("Error: $e");
+
+    if (kDebugMode) {
+      onMessage(ServerMessage.fromJson(map));
+    } else {
+      try {
+        onMessage(ServerMessage.fromJson(map));
+      } catch (e) {
+        debugPrint("Error: $e");
+      }
     }
   }
 

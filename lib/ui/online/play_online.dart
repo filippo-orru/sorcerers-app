@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+import 'package:sorcerers_app/game/providers/game_provider.dart';
 import 'package:sorcerers_app/game/providers/online_game_provider.dart';
 import 'package:sorcerers_app/ui/game_screen.dart';
 
@@ -491,11 +492,11 @@ class PlayOnlineGameScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ProxyProvider<OnlinePlayProvider, OnlineGameProvider>(
+    return ChangeNotifierProxyProvider<OnlinePlayProvider, GameStateProvider>(
       create: (context) =>
           OnlineGameProvider(Provider.of<OnlinePlayProvider>(context, listen: false)),
       update: (context, provider, onlineGameProvider) {
-        onlineGameProvider!;
+        onlineGameProvider as OnlineGameProvider;
 
         final lobbyState = provider.adapter!.lobbyState;
         switch (lobbyState) {

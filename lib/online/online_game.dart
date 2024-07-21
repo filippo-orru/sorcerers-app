@@ -104,8 +104,12 @@ class PlayerAdapter {
   }
 
   void onMessage(ServerMessage message) {
-    if (lobbyState == null) {
-      sendNewName();
+    switch (message) {
+      case StateUpdate(lobbyState: final lobbyState):
+        this.lobbyState = lobbyState;
+        break;
+      default:
+        debugPrint("Unhandled message");
     }
   }
 }
