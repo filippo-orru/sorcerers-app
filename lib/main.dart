@@ -9,66 +9,73 @@ SharedPreferences? _globalPrefs;
 SharedPreferences get globalPrefs => _globalPrefs!;
 
 void main() {
-  runApp(const SorcerersApp());
+  runApp(SorcerersApp());
 }
 
-class SorcerersApp extends StatelessWidget {
+class SorcerersApp extends StatefulWidget {
   const SorcerersApp({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    return FutureBuilder(
-      future: SharedPreferences.getInstance(),
-      builder: (_, snapshot) {
-        final prefs = snapshot.data;
-        if (prefs != null) {
-          _globalPrefs ??= prefs;
-        }
+  State<SorcerersApp> createState() => _SorcerersAppState();
+}
 
-        return snapshot.connectionState != ConnectionState.done
-            ? const SizedBox()
-            : ChangeNotifierProvider(
-                create: (_) => OnlinePlayProvider(),
-                lazy: false,
-                child: MaterialApp(
-                  title: 'Sorcerers',
-                  debugShowCheckedModeBanner: false,
-                  theme: ThemeData(
-                    colorScheme: ColorScheme.fromSeed(
-                      seedColor: Colors.black,
-                      brightness: Brightness.dark,
-                      surface: Colors.black,
-                      primary: Colors.white,
-                    ),
-                    buttonTheme: ButtonThemeData(
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.zero),
-                    ),
-                    filledButtonTheme: FilledButtonThemeData(
-                      style: ButtonStyle(
-                        shape: WidgetStateProperty.all(
-                            RoundedRectangleBorder(borderRadius: BorderRadius.zero)),
-                      ),
-                    ),
-                    outlinedButtonTheme: OutlinedButtonThemeData(
-                      style: ButtonStyle(
-                        shape: WidgetStateProperty.all(
-                            RoundedRectangleBorder(borderRadius: BorderRadius.zero)),
-                      ),
-                    ),
-                    inputDecorationTheme: InputDecorationTheme(
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.zero,
-                      ),
-                    ),
-                    iconButtonTheme: IconButtonThemeData(
-                      style: ButtonStyle(),
-                    ),
-                    useMaterial3: true,
+class _SorcerersAppState extends State<SorcerersApp> {
+  final OnlinePlayProvider onlineProvider = OnlinePlayProvider();
+
+  @override
+  void initState() {
+    super.initState();
+    SharedPreferences.getInstance().then((prefs) {
+      setState(() => _globalPrefs = prefs);
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedSwitcher(
+      duration: Duration(milliseconds: 100),
+      child: _globalPrefs == null
+          ? const SizedBox()
+          : ChangeNotifierProvider<OnlinePlayProvider>.value(
+              value: onlineProvider,
+              child: MaterialApp(
+                title: 'Sorcerers',
+                debugShowCheckedModeBanner: false,
+                theme: ThemeData(
+                  colorScheme: ColorScheme.fromSeed(
+                    seedColor: Colors.black,
+                    brightness: Brightness.dark,
+                    surface: Colors.black,
+                    primary: Colors.white,
                   ),
-                  home: const HomeScreen(),
+                  buttonTheme: ButtonThemeData(
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.zero),
+                  ),
+                  filledButtonTheme: FilledButtonThemeData(
+                    style: ButtonStyle(
+                      shape: WidgetStateProperty.all(
+                          RoundedRectangleBorder(borderRadius: BorderRadius.zero)),
+                    ),
+                  ),
+                  outlinedButtonTheme: OutlinedButtonThemeData(
+                    style: ButtonStyle(
+                      shape: WidgetStateProperty.all(
+                          RoundedRectangleBorder(borderRadius: BorderRadius.zero)),
+                    ),
+                  ),
+                  inputDecorationTheme: InputDecorationTheme(
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.zero,
+                    ),
+                  ),
+                  iconButtonTheme: IconButtonThemeData(
+                    style: ButtonStyle(),
+                  ),
+                  useMaterial3: true,
                 ),
-              );
-      },
+                home: const HomeScreen(),
+              ),
+            ),
     );
   }
 }

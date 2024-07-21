@@ -366,7 +366,14 @@ class InLobbyScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final adapter = context.watch<OnlinePlayProvider>().adapter!;
 
-    var me = lobbyState.players.firstWhere((playerInLobby) => playerInLobby.id == adapter.playerId);
+    final PlayerInLobby? me = lobbyState.players
+        .map<PlayerInLobby?>((i) => i)
+        .firstWhere((playerInLobby) => playerInLobby?.id == adapter.playerId, orElse: () => null);
+    if (me == null) {
+      Navigator.of(context).popUntil((r) => r.isFirst);
+      return const Center(child: CircularProgressIndicator());
+    }
+
     final ready = me.ready;
     final isAlone = lobbyState.players.length == 1;
 
@@ -376,7 +383,10 @@ class InLobbyScreen extends StatelessWidget {
         adapter.leaveLobby(),
       },
       children: [
-        const SizedBox(height: 16),
+        if (lobbyState.message != null) ...[
+          const SizedBox(height: 16),
+          Text(lobbyState.message!),
+        ],
         for (final player in lobbyState.players) ...{
           OutlinedButton.icon(
             onPressed: () {
@@ -487,21 +497,26 @@ final ButtonStyle stealthBorder = ButtonStyle(
   }),
 );
 
-class PlayOnlineGameScreen extends StatelessWidget {
+class PlayOnlineGameScreen extends StatefulWidget {
   const PlayOnlineGameScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    return ChangeNotifierProxyProvider<OnlinePlayProvider, GameStateProvider>(
-      create: (context) =>
-          OnlineGameProvider(Provider.of<OnlinePlayProvider>(context, listen: false)),
-      update: (context, provider, onlineGameProvider) {
-        onlineGameProvider as OnlineGameProvider;
+  State<PlayOnlineGameScreen> createState() => _PlayOnlineGameScreenState();
+}
 
+class _PlayOnlineGameScreenState extends State<PlayOnlineGameScreen> {
+  OnlineGameProvider? onlineGameProvider;
+
+  @override
+  Widget build(BuildContext context) {
+    return Consumer<OnlinePlayProvider>(
+      builder: (_, provider, __) {
+        onlineGameProvider ??= OnlineGameProvider(provider);
         final lobbyState = provider.adapter!.lobbyState;
+
         switch (lobbyState) {
           case LobbyStatePlaying(gameState: final gameState):
-            onlineGameProvider.value = gameState;
+            onlineGameProvider!.value = gameState;
             break;
 
           default:
@@ -509,9 +524,9 @@ class PlayOnlineGameScreen extends StatelessWidget {
             // TODO show error message
             break;
         }
-        return onlineGameProvider;
+        return ChangeNotifierProvider<GameStateProvider>.value(
+            value: onlineGameProvider!, child: GameScreen());
       },
-      child: GameScreen(),
     );
   }
 }

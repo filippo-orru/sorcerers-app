@@ -7,8 +7,8 @@ import 'package:sorcerers_app/extensions.dart';
 import 'package:sorcerers_core/game/cards.dart';
 import 'package:sorcerers_core/game/game.dart';
 import 'package:sorcerers_app/game/providers/game_provider.dart';
-import 'package:sorcerers_core/online/messages/game_messages/game_messages_client.dart';
 import 'package:sorcerers_app/ui/widget_utils.dart';
+import 'package:sorcerers_core/online/messages/game_messages_client.dart';
 
 class GameScreen extends StatelessWidget {
   const GameScreen({super.key});
@@ -38,7 +38,7 @@ class _GameWidgetState extends State<GameWidget> {
     return Consumer<GameStateProvider>(
       builder: (_, provider, __) {
         final game = provider.value;
-        final currentPlayer = game.players[game.currentPlayerId]!;
+        final myPlayer = game.players[game.myPlayerId]!;
 
         return Stack(
           children: [
@@ -97,13 +97,13 @@ class _GameWidgetState extends State<GameWidget> {
                             children: game.players.values
                                 .map((player) => PlayerOnTable(
                                       player,
-                                      isActive: player == currentPlayer,
+                                      isActive: player == myPlayer,
                                     ))
                                 .toList(),
                           ),
                         ),
                       ),
-                      Instructions(currentPlayer: currentPlayer),
+                      Instructions(currentPlayer: myPlayer),
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 16),
                         width: double.infinity,
@@ -127,23 +127,24 @@ class _GameWidgetState extends State<GameWidget> {
                             const SizedBox(height: 16),
                             AnimatedContainer(
                               duration: Duration(milliseconds: 200),
-                              height: currentPlayer.hand.isNotEmpty ? 150 : 32,
+                              height: myPlayer.hand.isNotEmpty ? 150 : 32,
                               child: ListView(
                                 shrinkWrap: true,
                                 scrollDirection: Axis.horizontal,
                                 children: [
-                                  for (final (i, card) in currentPlayer.hand.indexed) ...[
+                                  for (final (i, card) in myPlayer.hand.values.indexed) ...[
                                     CardContent(
                                       card: card,
                                       onTap: game.roundStage == RoundStage.playing &&
                                               game.cardsOnTable.length < game.players.length &&
-                                              currentPlayer.canPlayCard(card, game.leadColor)
+                                              myPlayer.id == game.currentPlayerId &&
+                                              myPlayer.canPlayCard(card, game.leadColor)
                                           ? () {
-                                              provider.sendMessage(PlayCard(card));
+                                              provider.sendMessage(PlayCard(card.cardId));
                                             }
                                           : null,
                                     ),
-                                    if (i < currentPlayer.hand.length - 1) ...{
+                                    if (i < myPlayer.hand.length - 1) ...{
                                       const SizedBox(width: 8),
                                     }
                                   ],
@@ -291,7 +292,7 @@ class Instructions extends StatelessWidget {
                   style: const TextStyle(fontSize: 18),
                 ),
                 const SizedBox(height: 16),
-                ElevatedButton(
+                OutlinedButton(
                   onPressed: () {
                     provider.sendMessage(ReadyForNextTrick());
                   },
@@ -305,7 +306,7 @@ class Instructions extends StatelessWidget {
                 const SizedBox(height: 16),
                 ScoresTable(),
                 const SizedBox(height: 16),
-                ElevatedButton(
+                OutlinedButton(
                   onPressed: () {
                     provider.sendMessage(StartNewRound());
                   },
