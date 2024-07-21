@@ -502,8 +502,6 @@ class PlayOnlineGameScreen extends StatelessWidget {
         switch (lobbyState) {
           case LobbyStatePlaying(gameState: final gameState):
             onlineGameProvider.value = gameState;
-            onlineGameProvider.value.sendMessage =
-                (message) => provider.adapter!.sendGameMessage(message);
             break;
 
           default:

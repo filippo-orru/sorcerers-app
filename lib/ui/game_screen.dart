@@ -36,8 +36,8 @@ class _GameWidgetState extends State<GameWidget> {
   @override
   Widget build(BuildContext context) {
     return Consumer<GameStateProvider>(
-      builder: (_, gameStateProvider, __) {
-        final game = gameStateProvider.value;
+      builder: (_, provider, __) {
+        final game = provider.value;
         final currentPlayer = game.players[game.currentPlayerId]!;
 
         return Stack(
@@ -139,7 +139,7 @@ class _GameWidgetState extends State<GameWidget> {
                                               game.cardsOnTable.length < game.players.length &&
                                               currentPlayer.canPlayCard(card, game.leadColor)
                                           ? () {
-                                              game.sendMessage(PlayCard(card));
+                                              provider.sendMessage(PlayCard(card));
                                             }
                                           : null,
                                     ),
@@ -221,7 +221,7 @@ class _GameWidgetState extends State<GameWidget> {
                                   const Divider(height: 32),
                                   OutlinedButton(
                                     onPressed: () {
-                                      game.sendMessage(LeaveGame());
+                                      provider.sendMessage(LeaveGame());
                                       Navigator.of(context).popUntil((route) => route.isFirst);
                                     },
                                     child: const Text('Stop playing'),
@@ -253,8 +253,11 @@ class Instructions extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Consumer<GameStateProvider>(
-      builder: (_, gameStateProvider, __) {
-        final game = gameStateProvider.value;
+      builder: (_, provider, __) {
+        final game = provider.value;
+
+        final bool isMyTurn = game.currentPlayerId == game.myPlayerId;
+        final String currentPlayerName = game.players[game.currentPlayerId]!.name;
 
         final bool isShuffle = game.roundStage == RoundStage.shuffle;
         final bool mustChooseTrumpColor = game.roundStage == RoundStage.mustChooseTrumpColor;
@@ -290,7 +293,7 @@ class Instructions extends StatelessWidget {
                 const SizedBox(height: 16),
                 ElevatedButton(
                   onPressed: () {
-                    game.sendMessage(ReadyForNextTrick());
+                    provider.sendMessage(ReadyForNextTrick());
                   },
                   child: const Text('Continue'),
                 ),
@@ -304,52 +307,56 @@ class Instructions extends StatelessWidget {
                 const SizedBox(height: 16),
                 ElevatedButton(
                   onPressed: () {
-                    game.sendMessage(StartNewRound());
+                    provider.sendMessage(StartNewRound());
                   },
                   child: const Text('Next round'),
                 ),
               ] else if (isShuffle) ...[
-                const Text(
-                  "Shuffle the deck",
+                Text(
+                  isMyTurn ? "Shuffle the deck" : "$currentPlayerName is shuffling",
                   style: TextStyle(fontSize: 18),
                 ),
-                const SizedBox(height: 16),
-                Center(
-                  child: OutlinedButton(
-                    onPressed: () {
-                      game.sendMessage(ShuffleDeck());
-                    },
-                    child: Text("Shuffle"),
+                if (isMyTurn) ...[
+                  const SizedBox(height: 16),
+                  Center(
+                    child: OutlinedButton(
+                      onPressed: () {
+                        provider.sendMessage(ShuffleDeck());
+                      },
+                      child: Text("Shuffle"),
+                    ),
                   ),
-                ),
+                ],
               ] else if (isBidding) ...[
-                const Text(
-                  "Bid your tricks",
+                Text(
+                  isMyTurn ? "Bid your tricks" : "$currentPlayerName is bidding",
                   style: TextStyle(fontSize: 18),
                 ),
-                const SizedBox(height: 16),
-                Center(
-                  child: SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    child: Row(
-                      children: List.generate(
-                        game.cardsForRound + 1, // +1 for 0
-                        (i) => Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 6),
-                          child: SizedBox(
-                            width: 48,
-                            height: 48,
-                            child: OutlinedButton(
-                              style: ButtonStyle(
-                                padding: WidgetStatePropertyAll(EdgeInsets.zero),
-                                alignment: Alignment.center,
-                              ),
-                              onPressed: () {
-                                game.sendMessage(SetBid(i));
-                              },
-                              child: Text(
-                                "$i",
-                                style: const TextStyle(fontSize: 24),
+                if (isMyTurn) ...[
+                  const SizedBox(height: 16),
+                  Center(
+                    child: SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: Row(
+                        children: List.generate(
+                          game.cardsForRound + 1, // +1 for 0
+                          (i) => Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 6),
+                            child: SizedBox(
+                              width: 48,
+                              height: 48,
+                              child: OutlinedButton(
+                                style: ButtonStyle(
+                                  padding: WidgetStatePropertyAll(EdgeInsets.zero),
+                                  alignment: Alignment.center,
+                                ),
+                                onPressed: () {
+                                  provider.sendMessage(SetBid(i));
+                                },
+                                child: Text(
+                                  "$i",
+                                  style: const TextStyle(fontSize: 24),
+                                ),
                               ),
                             ),
                           ),
@@ -357,43 +364,52 @@ class Instructions extends StatelessWidget {
                       ),
                     ),
                   ),
-                ),
+                ],
               ] else if (mustChooseTrumpColor) ...[
-                const Text(
-                  "Pick the trump color",
+                Text(
+                  isMyTurn
+                      ? "Pick the trump color"
+                      : "$currentPlayerName is picking the trump color",
                   style: TextStyle(fontSize: 18),
                 ),
-                const SizedBox(height: 16),
-                Row(
-                  children: CardColor.values
-                      .map(
-                        (color) => Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 6),
-                          child: GestureDetector(
-                            onTap: () {
-                              game.sendMessage(SetTrumpColor(color));
-                            },
-                            child: Container(
-                              width: 48,
-                              height: 48,
-                              alignment: Alignment.center,
-                              decoration: BoxDecoration(
-                                border: Border.all(color: Colors.white),
-                                color: color.color,
+                if (isMyTurn) ...[
+                  const SizedBox(height: 16),
+                  Row(
+                    children: CardColor.values
+                        .map(
+                          (color) => Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 6),
+                            child: GestureDetector(
+                              onTap: () {
+                                provider.sendMessage(SetTrumpColor(color));
+                              },
+                              child: Container(
+                                width: 48,
+                                height: 48,
+                                alignment: Alignment.center,
+                                decoration: BoxDecoration(
+                                  border: Border.all(color: Colors.white),
+                                  color: color.color,
+                                ),
                               ),
                             ),
                           ),
-                        ),
-                      )
-                      .toList(),
-                ),
+                        )
+                        .toList(),
+                  ),
+                ],
               ] else if (game.roundStage == RoundStage.playing) ...[
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(isMyTurn ? "Pick a card" : "$currentPlayerName is picking a card"),
+                  ],
+                ),
+              ] else ...[
                 const Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Text(
-                      "Pick a card", // TODO support "not my turn"
-                    ),
+                    Text("Wait for your turn"),
                   ],
                 ),
               ],

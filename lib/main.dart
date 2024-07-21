@@ -5,7 +5,8 @@ import 'package:sorcerers_app/online/online_game.dart';
 import 'package:sorcerers_app/ui/local/play_local.dart';
 import 'package:sorcerers_app/ui/online/play_online.dart';
 
-late final SharedPreferences globalPrefs;
+SharedPreferences? _globalPrefs;
+SharedPreferences get globalPrefs => _globalPrefs!;
 
 void main() {
   runApp(const SorcerersApp());
@@ -21,7 +22,7 @@ class SorcerersApp extends StatelessWidget {
       builder: (_, snapshot) {
         final prefs = snapshot.data;
         if (prefs != null) {
-          globalPrefs = prefs;
+          _globalPrefs ??= prefs;
         }
 
         return snapshot.connectionState != ConnectionState.done

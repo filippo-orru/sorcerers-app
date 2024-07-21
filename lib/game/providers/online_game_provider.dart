@@ -1,6 +1,7 @@
 import 'package:sorcerers_app/online/online_game.dart';
 import 'package:sorcerers_core/game/game.dart';
 import 'package:sorcerers_app/game/providers/game_provider.dart';
+import 'package:sorcerers_core/online/messages/game_messages/game_messages_client.dart';
 
 class OnlineGameProvider extends GameStateProvider {
   final OnlinePlayProvider provider;
@@ -9,4 +10,9 @@ class OnlineGameProvider extends GameStateProvider {
   GameState value = GameState.loading();
 
   OnlineGameProvider(this.provider);
+
+  @override
+  void sendMessage(GameMessageClient message) {
+    provider.adapter?.sendGameMessage(message);
+  }
 }
