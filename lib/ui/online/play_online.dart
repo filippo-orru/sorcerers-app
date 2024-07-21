@@ -16,15 +16,6 @@ class OnlinePlayWrapper extends StatefulWidget {
 }
 
 class _OnlinePlayWrapperState extends State<OnlinePlayWrapper> {
-  Widget buildContent(LobbyState? lobbyState) {
-    return switch (lobbyState) {
-      null => NameSelectionScreen(key: ValueKey("name")),
-      LobbyStateIdle() => LobbySelectionScreen(key: ValueKey("idle"), lobbyState: lobbyState),
-      LobbyStateInLobby() => InLobbyScreen(key: ValueKey("inLobby"), lobbyState: lobbyState),
-      LobbyStatePlaying() => PlayOnlineGameScreen(key: ValueKey("playing"))
-    };
-  }
-
   final curveTween = CurveTween(curve: Curves.easeOutQuad);
 
   @override
@@ -32,7 +23,9 @@ class _OnlinePlayWrapperState extends State<OnlinePlayWrapper> {
     return RequireConnection(
       child: Consumer<OnlinePlayProvider>(
         builder: (_, provider, __) {
-          final lobbyState = provider.lobbyState;
+          final adapter = provider.adapter!;
+          final lobbyState = adapter.lobbyState;
+
           return AnimatedSwitcher(
             duration: Duration(milliseconds: 200),
             transitionBuilder: (child, animation) {
@@ -42,7 +35,21 @@ class _OnlinePlayWrapperState extends State<OnlinePlayWrapper> {
                 child: child,
               );
             },
-            child: buildContent(lobbyState),
+            child: switch (lobbyState) {
+              null => NameSelectionScreen(key: ValueKey("name")),
+              LobbyStateIdle() => LobbySelectionScreen(
+                  key: ValueKey("idle"),
+                  adapter: adapter,
+                  lobbyState: lobbyState,
+                ),
+              LobbyStateInLobby() => InLobbyScreen(
+                  key: ValueKey("inLobby"),
+                  lobbyState: lobbyState,
+                ),
+              LobbyStatePlaying() => PlayOnlineGameScreen(
+                  key: ValueKey("playing"),
+                )
+            },
           );
         },
       ),
@@ -65,6 +72,7 @@ class _NameSelectionScreenState extends State<NameSelectionScreen> {
   Widget build(BuildContext context) {
     return Consumer<OnlinePlayProvider>(
       builder: (_, provider, __) {
+        final adapter = provider.adapter!;
         void setName() {
           final value = _nameEditingController.text;
           if (value.length <= 3) {
@@ -73,13 +81,13 @@ class _NameSelectionScreenState extends State<NameSelectionScreen> {
             });
             return;
           }
-          provider.storedName = value;
-          provider.sendNewName();
+          adapter.storedName = value;
+          adapter.sendNewName();
         }
 
-        if (provider.storedName == null) {
+        if (adapter.storedName == null) {
           return MenuWithBack(
-            title: const Text("What's your name?"),
+            title: "What's your name?",
             children: [
               TextField(
                 autofocus: true,
@@ -127,9 +135,14 @@ class _NameSelectionScreenState extends State<NameSelectionScreen> {
 }
 
 class LobbySelectionScreen extends StatefulWidget {
+  final PlayerAdapter adapter;
   final LobbyStateIdle lobbyState;
 
-  const LobbySelectionScreen({super.key, required this.lobbyState});
+  const LobbySelectionScreen({
+    super.key,
+    required this.adapter,
+    required this.lobbyState,
+  });
 
   @override
   State<LobbySelectionScreen> createState() => _LobbySelectionScreenState();
@@ -143,93 +156,89 @@ class _LobbySelectionScreenState extends State<LobbySelectionScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Consumer<OnlinePlayProvider>(
-      builder: (_, provider, __) {
-        return MenuWithBack(
-          title: Text("Select a lobby", style: TextStyle(fontSize: 24)),
-          children: [
-            if (widget.lobbyState.lobbies.isNotEmpty) ...{
-              for (final lobby in widget.lobbyState.lobbies) ...[
-                OutlinedButton.icon(
-                  onPressed: () {
-                    provider.joinLobby(lobby.name);
-                  },
-                  icon: Icon(Icons.arrow_right_sharp),
-                  label: Row(
-                    key: ValueKey(lobby.name),
-                    children: [
-                      Text(lobby.name),
-                      const Spacer(),
-                      Icon(Icons.person_sharp, size: 14),
-                      const SizedBox(width: 4),
-                      Text("${lobby.playerCount}")
-                    ],
-                  ),
-                ),
-                SizedBox(height: 8),
-              ],
-            } else if (_newLobbyNameController == null) ...{
-              Text("No lobbies available, create one instead!"),
-            },
-            const SizedBox(height: 16),
-            if (_newLobbyNameController == null) ...[
-              OutlinedButton.icon(
-                onPressed: () {
-                  setState(() => _newLobbyNameController = TextEditingController());
-                },
-                icon: const Icon(Icons.add),
-                label: const Text("Create a new lobby"),
-              )
-            ] else ...[
-              const SizedBox(height: 16),
-              TextField(
-                autofocus: true,
-                controller: _newLobbyNameController,
-                focusNode: _newLobbyNameFocus,
-                maxLength: 24,
-                decoration: const InputDecoration(
-                  labelText: "Lobby name",
-                ),
-                buildCounter: (_, {int? currentLength, int? maxLength, bool? isFocused}) {
-                  final l = currentLength ?? 0;
-                  if (l <= 3 && _triedCreatingShortName) {
-                    return const Text("Enter a longer name");
-                  } else if (l >= maxLength! - 5) {
-                    return Text("$currentLength/$maxLength");
-                  } else {
-                    return Text("");
-                  }
-                },
-                onSubmitted: (value) {
-                  provider.createLobby(value);
-                  setState(() => _newLobbyNameController = null);
-                },
+    return MenuWithBack(
+      title: "Select a lobby",
+      children: [
+        if (widget.lobbyState.lobbies.isNotEmpty) ...{
+          for (final lobby in widget.lobbyState.lobbies) ...[
+            OutlinedButton.icon(
+              onPressed: () {
+                widget.adapter.joinLobby(lobby.name);
+              },
+              icon: Icon(Icons.arrow_right_sharp),
+              label: Row(
+                key: ValueKey(lobby.name),
+                children: [
+                  Text(lobby.name),
+                  const Spacer(),
+                  Icon(Icons.person_sharp, size: 14),
+                  const SizedBox(width: 4),
+                  Text("${lobby.playerCount}")
+                ],
               ),
-              const SizedBox(height: 16),
-              OutlinedButton(
-                onPressed: () {
-                  if (_newLobbyNameController!.text.length <= 3) {
-                    setState(() => _triedCreatingShortName = true);
-                    _newLobbyNameFocus.requestFocus();
-                    return;
-                  }
-                  setState(() => _triedCreatingShortName = false);
-
-                  provider.createLobby(_newLobbyNameController!.text);
-                  setState(() => _newLobbyNameController = null);
-                },
-                child: const Text("Create lobby"),
-              ),
-            ],
+            ),
+            SizedBox(height: 8),
           ],
-        );
-      },
+        } else if (_newLobbyNameController == null) ...{
+          Text("No lobbies available, create one instead!"),
+        },
+        const SizedBox(height: 16),
+        if (_newLobbyNameController == null) ...[
+          OutlinedButton.icon(
+            onPressed: () {
+              setState(() => _newLobbyNameController = TextEditingController());
+            },
+            icon: const Icon(Icons.add),
+            label: const Text("Create a new lobby"),
+          )
+        ] else ...[
+          const SizedBox(height: 16),
+          TextField(
+            autofocus: true,
+            controller: _newLobbyNameController,
+            focusNode: _newLobbyNameFocus,
+            maxLength: 24,
+            decoration: const InputDecoration(
+              labelText: "Lobby name",
+            ),
+            buildCounter: (_, {int? currentLength, int? maxLength, bool? isFocused}) {
+              final l = currentLength ?? 0;
+              if (l <= 3 && _triedCreatingShortName) {
+                return const Text("Enter a longer name");
+              } else if (l >= maxLength! - 5) {
+                return Text("$currentLength/$maxLength");
+              } else {
+                return Text("");
+              }
+            },
+            onSubmitted: (value) {
+              widget.adapter.createLobby(value);
+              setState(() => _newLobbyNameController = null);
+            },
+          ),
+          const SizedBox(height: 16),
+          OutlinedButton(
+            onPressed: () {
+              if (_newLobbyNameController!.text.length <= 3) {
+                setState(() => _triedCreatingShortName = true);
+                _newLobbyNameFocus.requestFocus();
+                return;
+              }
+              setState(() => _triedCreatingShortName = false);
+
+              widget.adapter.createLobby(_newLobbyNameController!.text);
+              setState(() => _newLobbyNameController = null);
+            },
+            child: const Text("Create lobby"),
+          ),
+        ],
+      ],
     );
   }
 }
 
 class MenuWithBack extends StatelessWidget {
-  final Widget title;
+  final String title;
   final List<Widget> children;
   final void Function(BuildContext) onBack;
 
@@ -258,9 +267,11 @@ class MenuWithBack extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: <Widget>[
                   Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
                       SizedBox(
                         width: 48,
+                        height: 48,
                         child: Center(
                           child: IconButton(
                             icon: Icon(Icons.arrow_back),
@@ -268,7 +279,10 @@ class MenuWithBack extends StatelessWidget {
                           ),
                         ),
                       ),
-                      title,
+                      Text(
+                        title,
+                        style: TextStyle(fontSize: 24),
+                      ),
                     ],
                   ),
                   const SizedBox(height: 16),
@@ -304,9 +318,7 @@ class _RequireConnectionState extends State<RequireConnection> {
   Widget build(BuildContext context) {
     return Consumer<OnlinePlayProvider>(
       builder: (_, provider, __) {
-        if (provider.connection.okay) {
-          context.read<OnlinePlayProvider>().sendNewName();
-
+        if (provider.connection.okay && provider.adapter != null) {
           return widget.child;
         } else {
           return Scaffold(
@@ -325,11 +337,12 @@ class _RequireConnectionState extends State<RequireConnection> {
                         Text("Waiting for connection..."),
                         SizedBox(height: 16),
                         OutlinedButton(
-                            onPressed: () {
-                              provider.leaveLobby();
-                              Navigator.of(context).popUntil((r) => r.isFirst);
-                            },
-                            child: Text("Leave"))
+                          onPressed: () {
+                            provider.adapter?.leaveLobby();
+                            Navigator.of(context).popUntil((r) => r.isFirst);
+                          },
+                          child: Text("Leave"),
+                        )
                       ],
                     ),
                   ),
@@ -350,39 +363,36 @@ class InLobbyScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final provider = context.watch<OnlinePlayProvider>();
+    final adapter = context.watch<OnlinePlayProvider>().adapter!;
 
-    var me = lobbyState.players.firstWhere((player) => player.name == lobbyState.myName);
+    var me = lobbyState.players.firstWhere((playerInLobby) => playerInLobby.id == adapter.playerId);
     final ready = me.ready;
     final isAlone = lobbyState.players.length == 1;
 
     return MenuWithBack(
-      title: const Text(
-        "Ready to play?",
-        style: TextStyle(fontSize: 18),
-      ),
+      title: "Ready to play?",
       onBack: (ctx) => {
-        provider.leaveLobby(),
+        adapter.leaveLobby(),
       },
       children: [
         const SizedBox(height: 16),
         for (final player in lobbyState.players) ...{
           OutlinedButton.icon(
             onPressed: () {
-              if (lobbyState.myName == player.name) {
-                provider.readyToPlay(!ready);
+              if (adapter.playerId == player.id) {
+                adapter.readyToPlay(!ready);
               }
             },
             style: stealthBorder,
             icon: Padding(
               padding: const EdgeInsets.symmetric(vertical: 4),
               child: Icon(
-                lobbyState.myName == player.name ? Icons.person_sharp : Icons.person_outline_sharp,
+                adapter.playerId == player.id ? Icons.person_sharp : Icons.person_outline_sharp,
               ),
             ),
             label: Row(
               children: [
-                Text(player.name + (lobbyState.myName == player.name ? " (you)" : "")),
+                Text(player.name + (adapter.playerId == player.name ? " (you)" : "")),
                 const Spacer(),
                 player.ready ? Icon(Icons.check_box_sharp) : Text("···"),
               ],
@@ -406,7 +416,7 @@ class InLobbyScreen extends StatelessWidget {
         FilledOrOutlinedButton(
           filled: !isAlone && !ready,
           onPressed: () {
-            provider.readyToPlay(!ready);
+            adapter.readyToPlay(!ready);
           },
           icon: Icon(Icons.check_sharp),
           label: Text(ready ? "You are ready, waiting for others..." : "Ready to play?"),
@@ -415,7 +425,7 @@ class InLobbyScreen extends StatelessWidget {
         OutlinedButton(
           style: stealthBorder,
           onPressed: () {
-            context.read<OnlinePlayProvider>().leaveLobby();
+            adapter.leaveLobby();
           },
           child: const Text("Leave"),
         ),
@@ -484,13 +494,15 @@ class PlayOnlineGameScreen extends StatelessWidget {
     return ProxyProvider<OnlinePlayProvider, OnlineGameProvider>(
       create: (context) =>
           OnlineGameProvider(Provider.of<OnlinePlayProvider>(context, listen: false)),
-      update: (context, onlinePlayProvider, onlineGameProvider) {
-        final lobbyState = onlinePlayProvider.lobbyState;
+      update: (context, provider, onlineGameProvider) {
         onlineGameProvider!;
 
+        final lobbyState = provider.adapter!.lobbyState;
         switch (lobbyState) {
           case LobbyStatePlaying(gameState: final gameState):
             onlineGameProvider.value = gameState;
+            onlineGameProvider.value.sendMessage =
+                (message) => provider.adapter!.sendGameMessage(message);
             break;
 
           default:

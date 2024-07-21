@@ -139,7 +139,7 @@ class _GameWidgetState extends State<GameWidget> {
                                               game.cardsOnTable.length < game.players.length &&
                                               currentPlayer.canPlayCard(card, game.leadColor)
                                           ? () {
-                                              game.sendIntent(PlayCard(card));
+                                              game.sendMessage(PlayCard(card));
                                             }
                                           : null,
                                     ),
@@ -221,7 +221,7 @@ class _GameWidgetState extends State<GameWidget> {
                                   const Divider(height: 32),
                                   OutlinedButton(
                                     onPressed: () {
-                                      game.sendIntent(LeaveGame());
+                                      game.sendMessage(LeaveGame());
                                       Navigator.of(context).popUntil((route) => route.isFirst);
                                     },
                                     child: const Text('Stop playing'),
@@ -290,7 +290,7 @@ class Instructions extends StatelessWidget {
                 const SizedBox(height: 16),
                 ElevatedButton(
                   onPressed: () {
-                    game.sendIntent(ReadyForNextTrick());
+                    game.sendMessage(ReadyForNextTrick());
                   },
                   child: const Text('Continue'),
                 ),
@@ -304,7 +304,7 @@ class Instructions extends StatelessWidget {
                 const SizedBox(height: 16),
                 ElevatedButton(
                   onPressed: () {
-                    game.sendIntent(StartNewRound());
+                    game.sendMessage(StartNewRound());
                   },
                   child: const Text('Next round'),
                 ),
@@ -317,7 +317,7 @@ class Instructions extends StatelessWidget {
                 Center(
                   child: OutlinedButton(
                     onPressed: () {
-                      game.sendIntent(ShuffleDeck());
+                      game.sendMessage(ShuffleDeck());
                     },
                     child: Text("Shuffle"),
                   ),
@@ -345,7 +345,7 @@ class Instructions extends StatelessWidget {
                                 alignment: Alignment.center,
                               ),
                               onPressed: () {
-                                game.sendIntent(SetBid(i));
+                                game.sendMessage(SetBid(i));
                               },
                               child: Text(
                                 "$i",
@@ -371,7 +371,7 @@ class Instructions extends StatelessWidget {
                           padding: const EdgeInsets.symmetric(horizontal: 6),
                           child: GestureDetector(
                             onTap: () {
-                              game.sendIntent(SetTrumpColor(color));
+                              game.sendMessage(SetTrumpColor(color));
                             },
                             child: Container(
                               width: 48,

@@ -10,8 +10,9 @@ import 'package:web_socket_channel/web_socket_channel.dart';
 
 class ServerConnection with ChangeNotifier {
   final void Function(ServerMessage message) onMessage;
+  final void Function() onReconnect;
 
-  ServerConnection(this.onMessage);
+  ServerConnection(this.onMessage, this.onReconnect);
 
   WebSocketChannel? channel;
 
@@ -43,6 +44,7 @@ class ServerConnection with ChangeNotifier {
     _connectTryCount = 0;
 
     this.channel = channel;
+    onReconnect();
     notifyListeners();
   }
 

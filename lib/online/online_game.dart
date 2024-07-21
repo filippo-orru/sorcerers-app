@@ -1,22 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:sorcerers_app/main.dart';
+import 'package:sorcerers_core/game/game.dart';
+import 'package:sorcerers_core/online/messages/game_messages/game_messages_client.dart';
 import 'package:sorcerers_core/online/messages/messages_client.dart';
 import 'package:sorcerers_core/online/messages/messages_server.dart';
 import 'package:sorcerers_app/online/server_connection.dart';
+import 'package:sorcerers_core/utils.dart';
 
 class OnlinePlayProvider with ChangeNotifier {
   late ServerConnection connection;
 
-  LobbyState? lobbyState;
-
-  String? get storedName => globalPrefs.getString('name');
-  set storedName(String? value) {
-    globalPrefs.setString('name', value!);
-    notifyListeners();
-  }
+  PlayerAdapter? adapter;
 
   OnlinePlayProvider() {
-    connection = ServerConnection(_onMessage);
+    connection = ServerConnection(_onMessage, _onReconnect);
     connection.initializeConnection();
     connection.addListener(() {
       notifyListeners();
@@ -25,14 +22,35 @@ class OnlinePlayProvider with ChangeNotifier {
 
   void _onMessage(ServerMessage message) {
     switch (message) {
-      case StateUpdate():
-        lobbyState = message.lobbyState;
-        if (lobbyState == null) {
-          sendNewName();
-        }
+      case HelloResponse(playerId: final playerId, reconnectId: final reconnectId):
+        adapter = PlayerAdapter(connection, playerId, reconnectId);
+        adapter!.sendNewName();
+        break;
+      default:
+        adapter?.onMessage(message);
         break;
     }
     notifyListeners();
+  }
+
+  void _onReconnect() {
+    connection.send(Hello(adapter?.reconnectId));
+  }
+}
+
+class PlayerAdapter {
+  final ServerConnection connection;
+
+  PlayerId playerId;
+  ReconnectId reconnectId;
+
+  PlayerAdapter(this.connection, this.playerId, this.reconnectId);
+
+  LobbyState? lobbyState;
+
+  String? get storedName => globalPrefs.getString('name');
+  set storedName(String? value) {
+    globalPrefs.setString('name', value!);
   }
 
   void sendNewName() {
@@ -75,5 +93,19 @@ class OnlinePlayProvider with ChangeNotifier {
     }
 
     connection.send(ReadyToPlay(ready));
+  }
+
+  void sendGameMessage(GameMessageClient message) {
+    if (lobbyState is! LobbyStatePlaying) {
+      return;
+    }
+
+    connection.send(GameMessage(playerId, message));
+  }
+
+  void onMessage(ServerMessage message) {
+    if (lobbyState == null) {
+      sendNewName();
+    }
   }
 }
