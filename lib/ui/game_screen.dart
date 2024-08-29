@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import 'package:sorcerers_app/extensions.dart';
+import 'package:sorcerers_app/ui/online/play_online.dart';
 import 'package:sorcerers_core/game/cards.dart';
 import 'package:sorcerers_core/game/game.dart';
 import 'package:sorcerers_app/game/providers/game_provider.dart';
@@ -53,7 +54,7 @@ class _GameWidgetState extends State<GameWidget> {
                         child: Stack(
                           children: [
                             Center(
-                              child: OutlinedButton.icon(
+                              child: OutlinedButton(
                                 // padding: const EdgeInsets.all(8),
                                 // decoration: BoxDecoration(
                                 //   color: Theme.of(context).colorScheme.surfaceContainerLow,
@@ -66,10 +67,16 @@ class _GameWidgetState extends State<GameWidget> {
                                     showMenu = true;
                                   });
                                 },
-                                label: Text(
-                                  "Round ${game.cardsForRound}",
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(Icons.menu_rounded),
+                                    const SizedBox(width: 8),
+                                    Text(
+                                      "Round ${game.cardsForRound}",
+                                    ),
+                                  ],
                                 ),
-                                icon: Icon(Icons.menu_rounded),
                               ),
                             ),
                             if (game.trump != null) ...{
@@ -225,6 +232,7 @@ class _GameWidgetState extends State<GameWidget> {
                                       provider.sendMessage(LeaveGame());
                                       Navigator.of(context).popUntil((route) => route.isFirst);
                                     },
+                                    style: stealthBorder,
                                     child: const Text('Stop playing'),
                                   ),
                                 ],
@@ -490,7 +498,7 @@ class ScoresTable extends StatelessWidget {
     if (roundScore == null) {
       return [
         TableCell(child: Text(player.name)),
-        TableCell(child: Text("?")),
+        TableCell(child: Text("/")),
         TableCell(child: Text("$totalPoints")),
       ];
     } else {

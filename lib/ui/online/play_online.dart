@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:sorcerers_app/game/providers/game_provider.dart';
 import 'package:sorcerers_app/game/providers/online_game_provider.dart';
 import 'package:sorcerers_app/ui/game_screen.dart';
+import 'package:sorcerers_core/game/game.dart';
 
 import 'package:sorcerers_core/online/messages/messages_server.dart';
 import 'package:sorcerers_app/online/online_game.dart';
@@ -36,6 +37,7 @@ class _OnlinePlayWrapperState extends State<OnlinePlayWrapper> {
                 child: child,
               );
             },
+            layoutBuilder: layoutWithBackground(context),
             child: switch (lobbyState) {
               null => NameSelectionScreen(key: ValueKey("name")),
               LobbyStateIdle() => LobbySelectionScreen(
@@ -114,7 +116,7 @@ class _NameSelectionScreenState extends State<NameSelectionScreen> {
               ),
               const SizedBox(height: 8),
               const Text(
-                "Only alphanumeric characters are allowed. This name will be visible to other players.",
+                "Your name will be visible to other players. You can use letters and numbers.",
               ),
               const SizedBox(height: 16),
               OutlinedButton(
@@ -150,17 +152,23 @@ class LobbySelectionScreen extends StatefulWidget {
 }
 
 class _LobbySelectionScreenState extends State<LobbySelectionScreen> {
-  bool _triedCreatingShortName = false;
-
-  TextEditingController? _newLobbyNameController;
-  final FocusNode _newLobbyNameFocus = FocusNode();
+  bool _creatingLobby = false;
 
   @override
   Widget build(BuildContext context) {
+    return AnimatedSwitcher(
+      duration: Duration(milliseconds: 200),
+      layoutBuilder: layoutWithBackground(context),
+      child: _creatingLobby ? _createLobby() : _lobbyList(),
+    );
+  }
+
+  MenuWithBack _lobbyList() {
     return MenuWithBack(
       title: "Select a lobby",
+      onBack: (ctx) => widget.adapter.leaveLobby(),
       children: [
-        if (widget.lobbyState.lobbies.isNotEmpty) ...{
+        if (widget.lobbyState.lobbies.isNotEmpty) ...[
           for (final lobby in widget.lobbyState.lobbies) ...[
             OutlinedButton.icon(
               onPressed: () {
@@ -180,127 +188,91 @@ class _LobbySelectionScreenState extends State<LobbySelectionScreen> {
             ),
             SizedBox(height: 8),
           ],
-        } else if (_newLobbyNameController == null) ...{
-          Text("No lobbies available, create one instead!"),
-        },
-        const SizedBox(height: 16),
-        if (_newLobbyNameController == null) ...[
-          OutlinedButton.icon(
-            onPressed: () {
-              setState(() => _newLobbyNameController = TextEditingController());
-            },
-            icon: const Icon(Icons.add),
-            label: const Text("Create a new lobby"),
-          )
         ] else ...[
-          const SizedBox(height: 16),
-          TextField(
-            autofocus: true,
-            controller: _newLobbyNameController,
-            focusNode: _newLobbyNameFocus,
-            maxLength: 24,
-            decoration: const InputDecoration(
-              labelText: "Lobby name",
-            ),
-            buildCounter: (_, {int? currentLength, int? maxLength, bool? isFocused}) {
-              final l = currentLength ?? 0;
-              if (l <= 3 && _triedCreatingShortName) {
-                return const Text("Enter a longer name");
-              } else if (l >= maxLength! - 5) {
-                return Text("$currentLength/$maxLength");
-              } else {
-                return Text("");
-              }
-            },
-            onSubmitted: (value) {
-              widget.adapter.createLobby(value);
-              setState(() => _newLobbyNameController = null);
-            },
-          ),
-          const SizedBox(height: 16),
-          OutlinedButton(
-            onPressed: () {
-              if (_newLobbyNameController!.text.length <= 3) {
-                setState(() => _triedCreatingShortName = true);
-                _newLobbyNameFocus.requestFocus();
-                return;
-              }
-              setState(() => _triedCreatingShortName = false);
-
-              widget.adapter.createLobby(_newLobbyNameController!.text);
-              setState(() => _newLobbyNameController = null);
-            },
-            child: const Text("Create lobby"),
-          ),
+          Text("No lobbies available, create one instead!"),
         ],
+        const SizedBox(height: 16),
+        OutlinedButton.icon(
+          onPressed: () {
+            setState(() => _creatingLobby = true);
+          },
+          icon: const Icon(Icons.add),
+          label: const Text("Create a new lobby"),
+        ),
       ],
+    );
+  }
+
+  LobbyCreationScreen _createLobby() {
+    return LobbyCreationScreen(
+      createLobby: (name) {
+        widget.adapter.createLobby(name);
+        setState(() => _creatingLobby = false);
+      },
+      onBack: () => setState(() => _creatingLobby = false),
     );
   }
 }
 
-class MenuWithBack extends StatelessWidget {
-  final String title;
-  final List<Widget> children;
-  final void Function(BuildContext) onBack;
+class LobbyCreationScreen extends StatefulWidget {
+  final void Function(String) createLobby;
+  final void Function() onBack;
 
-  const MenuWithBack({
-    super.key,
-    required this.title,
-    required this.children,
-    void Function(BuildContext)? onBack,
-  }) : onBack = onBack ?? _defaultOnBack;
+  const LobbyCreationScreen({super.key, required this.createLobby, required this.onBack});
 
-  static void _defaultOnBack(BuildContext context) {
-    Navigator.of(context).pop();
-  }
+  @override
+  State<LobbyCreationScreen> createState() => _LobbyCreationScreenState();
+}
+
+class _LobbyCreationScreenState extends State<LobbyCreationScreen> {
+  bool _triedCreatingShortName = false;
+
+  final TextEditingController _newLobbyNameController = TextEditingController();
+  final FocusNode _newLobbyNameFocus = FocusNode();
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: Stack(
-        children: [
-          MaxWidth(
-            maxWidth: 400 + 48 * 2,
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: <Widget>[
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      SizedBox(
-                        width: 48,
-                        height: 48,
-                        child: Center(
-                          child: IconButton(
-                            icon: Icon(Icons.arrow_back),
-                            onPressed: () => onBack(context),
-                          ),
-                        ),
-                      ),
-                      Text(
-                        title,
-                        style: TextStyle(fontSize: 24),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 48),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: children,
-                    ),
-                  ),
-                ],
-              ),
-            ),
+    return MenuWithBack(
+      title: "Create Lobby",
+      onBack: (_) => widget.onBack(),
+      children: [
+        TextField(
+          autofocus: true,
+          controller: _newLobbyNameController,
+          focusNode: _newLobbyNameFocus,
+          maxLength: 24,
+          decoration: const InputDecoration(
+            labelText: "Lobby name",
           ),
-        ],
-      ),
+          buildCounter: (_, {int? currentLength, int? maxLength, bool? isFocused}) {
+            final l = currentLength ?? 0;
+            if (l <= 3 && _triedCreatingShortName) {
+              return const Text("Enter a longer name");
+            } else if (l >= maxLength! - 5) {
+              return Text("$currentLength/$maxLength");
+            } else {
+              return null;
+            }
+          },
+          onSubmitted: (value) {
+            widget.createLobby(value);
+          },
+        ),
+        const SizedBox(height: 16),
+        OutlinedButton(
+          onPressed: () {
+            if (_newLobbyNameController.text.length <= 3) {
+              setState(() => _triedCreatingShortName = true);
+              _newLobbyNameFocus.requestFocus();
+              return;
+            }
+            setState(() => _triedCreatingShortName = false);
+
+            widget.createLobby(_newLobbyNameController.text);
+          },
+          child: const Text("Create lobby"),
+        ),
+      ],
     );
   }
 }
@@ -375,10 +347,10 @@ class InLobbyScreen extends StatelessWidget {
     }
 
     final ready = me.ready;
-    final isAlone = lobbyState.players.length == 1;
+    final lobbyHasMinNumberOfPlayers = lobbyState.players.length >= lobbyMinNumberOfPlayers;
 
     return MenuWithBack(
-      title: "Ready to play?",
+      title: "Lobby",
       onBack: (ctx) => {
         adapter.leaveLobby(),
       },
@@ -387,10 +359,25 @@ class InLobbyScreen extends StatelessWidget {
           const SizedBox(height: 16),
           Text(lobbyState.message!),
         ],
+        OutlinedButton.icon(
+          onPressed: null,
+          style: stealthBorder,
+          icon: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 4),
+            child: Icon(
+              Icons.groups_2_sharp,
+            ),
+          ),
+          label: Row(
+            children: [
+              Text("'${lobbyState.lobbyName}' lobby"),
+            ],
+          ),
+        ),
         for (final player in lobbyState.players) ...{
           OutlinedButton.icon(
             onPressed: () {
-              if (adapter.playerId == player.id) {
+              if (lobbyHasMinNumberOfPlayers && adapter.playerId == player.id) {
                 adapter.readyToPlay(!ready);
               }
             },
@@ -412,7 +399,7 @@ class InLobbyScreen extends StatelessWidget {
           const SizedBox(height: 8),
         },
         FilledOrOutlinedButton(
-          filled: isAlone,
+          filled: !lobbyHasMinNumberOfPlayers,
           onPressed: () {
             // TODO invite
           },
@@ -423,15 +410,17 @@ class InLobbyScreen extends StatelessWidget {
           ),
           label: Text("Invite others"),
         ),
-        const SizedBox(height: 16),
-        FilledOrOutlinedButton(
-          filled: !isAlone && !ready,
-          onPressed: () {
-            adapter.readyToPlay(!ready);
-          },
-          icon: Icon(Icons.check_sharp),
-          label: Text(ready ? "You are ready, waiting for others..." : "Ready to play?"),
-        ),
+        if (lobbyHasMinNumberOfPlayers) ...[
+          const SizedBox(height: 16),
+          FilledOrOutlinedButton(
+            filled: !ready,
+            onPressed: () {
+              adapter.readyToPlay(!ready);
+            },
+            icon: Icon(Icons.check_sharp),
+            label: Text(ready ? "You are ready..." : "Ready to play?"),
+          ),
+        ],
         const SizedBox(height: 24),
         OutlinedButton(
           style: stealthBorder,

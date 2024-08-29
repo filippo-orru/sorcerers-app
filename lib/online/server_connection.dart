@@ -99,8 +99,10 @@ class ServerConnection with ChangeNotifier {
     }
     notifyListeners();
 
+    final reconnectInSeconds = min(_connectTryCount, 5);
+    debugPrint("Will try to reconnect in $reconnectInSeconds seconds");
     _reconnectTimer ??= Timer(
-      Duration(seconds: min(_connectTryCount, 5)),
+      Duration(seconds: reconnectInSeconds),
       () {
         _connectTryCount += 1;
         initializeConnection();

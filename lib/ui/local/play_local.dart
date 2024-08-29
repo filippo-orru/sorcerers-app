@@ -6,6 +6,7 @@ import 'package:sorcerers_app/game/providers/game_provider.dart';
 
 import 'package:sorcerers_app/game/providers/local_game_provider.dart';
 import 'package:sorcerers_app/ui/game_screen.dart';
+import 'package:sorcerers_app/ui/online/play_online.dart';
 import 'package:sorcerers_app/ui/widget_utils.dart';
 
 class PlayerNamesScreen extends StatefulWidget {
@@ -20,91 +21,54 @@ class _PlayerNamesScreenState extends State<PlayerNamesScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: MaxWidth(
-        maxWidth: 400 + 48 * 2,
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: <Widget>[
-              Row(
-                children: [
-                  SizedBox(
-                    width: 48,
-                    child: Center(
-                      child: IconButton(
-                        icon: Icon(Icons.arrow_back),
-                        onPressed: () {
-                          Navigator.of(context).pop();
-                        },
-                      ),
-                    ),
-                  ),
-                  Text(
-                    "Who's playing?",
-                    style: TextStyle(fontSize: 24),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-              Padding(
-                padding: EdgeInsets.symmetric(horizontal: 48),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: <Widget>[
-                    for (final (index, player) in playerNames.indexed) ...{
-                      PlayerNameField(
-                        key: ValueKey(index),
-                        player: player,
-                        onChanged: (value) {
-                          setState(() {
-                            playerNames[index] = value;
-                          });
-                        },
-                        onAddNewPlayer: () {
-                          setState(() {
-                            playerNames.add("");
-                          });
-                        },
-                        onRemove: () {
-                          setState(() {
-                            playerNames.removeAt(index);
-                          });
-                        },
-                        onPlay: () {
-                          startPlaying(context);
-                        },
-                      ),
-                    },
-                    OutlinedButton.icon(
-                      onPressed: () {
-                        setState(() {
-                          playerNames.add("");
-                        });
-                      },
-                      label: Text("Add"),
-                      icon: Icon(Icons.add),
-                    ),
-                    const SizedBox(height: 64),
-                    OutlinedButton.icon(
-                      onPressed: playerNames.isNotEmpty
-                          ? () {
-                              startPlaying(context);
-                            }
-                          : null,
-                      label: Text("Start game"),
-                      icon: Icon(Icons.play_arrow_outlined),
-                    ),
-                  ],
-                ),
-              ),
-            ],
+    return MenuWithBack(
+      title: "Who's playing?",
+      children: [
+        for (final (index, player) in playerNames.indexed) ...{
+          PlayerNameField(
+            key: ValueKey(index),
+            player: player,
+            onChanged: (value) {
+              setState(() {
+                playerNames[index] = value;
+              });
+            },
+            onAddNewPlayer: () {
+              setState(() {
+                playerNames.add("");
+              });
+            },
+            onRemove: () {
+              setState(() {
+                playerNames.removeAt(index);
+              });
+            },
+            onPlay: () {
+              startPlaying(context);
+            },
           ),
+        },
+        OutlinedButton.icon(
+          onPressed: () {
+            setState(() {
+              playerNames.add("");
+            });
+          },
+          style: stealthBorder,
+          label: Text("Add"),
+          icon: Icon(Icons.add),
         ),
-      ),
+        const SizedBox(height: 64),
+        OutlinedButton.icon(
+          onPressed: playerNames.isNotEmpty
+              ? () {
+                  startPlaying(context);
+                }
+              : null,
+          label: Text("Start game"),
+          icon: Icon(Icons.play_arrow_outlined),
+        ),
+      ],
     );
   }
 
