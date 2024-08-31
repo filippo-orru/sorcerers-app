@@ -166,7 +166,6 @@ class _LobbySelectionScreenState extends State<LobbySelectionScreen> {
   MenuWithBack _lobbyList() {
     return MenuWithBack(
       title: "Select a lobby",
-      onBack: (ctx) => widget.adapter.leaveLobby(),
       children: [
         if (widget.lobbyState.lobbies.isNotEmpty) ...[
           for (final lobby in widget.lobbyState.lobbies) ...[
@@ -360,7 +359,7 @@ class InLobbyScreen extends StatelessWidget {
           Text(lobbyState.message!),
         ],
         OutlinedButton.icon(
-          onPressed: null,
+          onPressed: () {},
           style: stealthBorder,
           icon: Padding(
             padding: const EdgeInsets.symmetric(vertical: 4),
@@ -370,10 +369,13 @@ class InLobbyScreen extends StatelessWidget {
           ),
           label: Row(
             children: [
-              Text("'${lobbyState.lobbyName}' lobby"),
+              Text("Lobby '${lobbyState.lobbyName}'"),
             ],
           ),
         ),
+        const SizedBox(height: 24),
+        const Text("Players"),
+        const SizedBox(height: 8),
         for (final player in lobbyState.players) ...{
           OutlinedButton.icon(
             onPressed: () {
@@ -398,6 +400,18 @@ class InLobbyScreen extends StatelessWidget {
           ),
           const SizedBox(height: 8),
         },
+        const Spacer(),
+        if (lobbyHasMinNumberOfPlayers) ...[
+          const SizedBox(height: 16),
+          FilledOrOutlinedButton(
+            filled: !ready,
+            onPressed: () {
+              adapter.readyToPlay(!ready);
+            },
+            icon: Icon(Icons.check_sharp),
+            label: Text(ready ? "You are ready..." : "Ready to play?"),
+          ),
+        ],
         FilledOrOutlinedButton(
           filled: !lobbyHasMinNumberOfPlayers,
           onPressed: () {
@@ -410,17 +424,6 @@ class InLobbyScreen extends StatelessWidget {
           ),
           label: Text("Invite others"),
         ),
-        if (lobbyHasMinNumberOfPlayers) ...[
-          const SizedBox(height: 16),
-          FilledOrOutlinedButton(
-            filled: !ready,
-            onPressed: () {
-              adapter.readyToPlay(!ready);
-            },
-            icon: Icon(Icons.check_sharp),
-            label: Text(ready ? "You are ready..." : "Ready to play?"),
-          ),
-        ],
         const SizedBox(height: 24),
         OutlinedButton(
           style: stealthBorder,
@@ -479,7 +482,7 @@ class FilledOrOutlinedButton extends StatelessWidget {
 final ButtonStyle stealthBorder = ButtonStyle(
   side: WidgetStateBorderSide.resolveWith((states) {
     if (states.isEmpty) {
-      return BorderSide(color: Colors.white.withOpacity(0));
+      return BorderSide(color: Colors.white.withOpacity(0.2));
     } else {
       return null;
     }

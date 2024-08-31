@@ -8,10 +8,12 @@ class MaxWidth extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Center(
+    return SafeArea(
       child: ConstrainedBox(
         constraints: BoxConstraints(maxWidth: maxWidth),
-        child: child,
+        child: Center(
+          child: child,
+        ),
       ),
     );
   }
@@ -43,6 +45,7 @@ class MenuWithBack extends StatelessWidget {
             child: Padding(
               padding: const EdgeInsets.all(16),
               child: Column(
+                mainAxisSize: MainAxisSize.max,
                 mainAxisAlignment: MainAxisAlignment.center,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: <Widget>[
@@ -60,18 +63,24 @@ class MenuWithBack extends StatelessWidget {
                         ),
                       ),
                       Text(
-                        title,
-                        style: TextStyle(fontSize: 24),
+                        title.toUpperCase(),
+                        style: TextStyle(
+                          fontSize: 18,
+                          letterSpacing: 2,
+                        ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 16),
-                  Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 48),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: children,
+                  Flexible(
+                    fit: FlexFit.loose,
+                    child: Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 48, vertical: 16),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: children,
+                      ),
                     ),
                   ),
                 ],

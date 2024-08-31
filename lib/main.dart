@@ -9,7 +9,38 @@ SharedPreferences? _globalPrefs;
 SharedPreferences get globalPrefs => _globalPrefs!;
 
 void main() {
-  runApp(SorcerersApp());
+  runApp(AppLoader());
+}
+
+class AppLoader extends StatefulWidget {
+  const AppLoader({super.key});
+
+  @override
+  State<AppLoader> createState() => _AppLoaderState();
+}
+
+class _AppLoaderState extends State<AppLoader> {
+  @override
+  void initState() {
+    super.initState();
+    SharedPreferences.getInstance().then((prefs) {
+      setState(() => _globalPrefs = prefs);
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedSwitcher(
+      duration: Duration(milliseconds: 100),
+      child: _globalPrefs == null
+          ? Container(
+              color: Theme.of(context).colorScheme.surface,
+              height: double.infinity,
+              width: double.infinity,
+            )
+          : SorcerersApp(),
+    );
+  }
 }
 
 class SorcerersApp extends StatefulWidget {
@@ -32,50 +63,45 @@ class _SorcerersAppState extends State<SorcerersApp> {
 
   @override
   Widget build(BuildContext context) {
-    return AnimatedSwitcher(
-      duration: Duration(milliseconds: 100),
-      child: _globalPrefs == null
-          ? const SizedBox()
-          : ChangeNotifierProvider<OnlinePlayProvider>.value(
-              value: onlineProvider,
-              child: MaterialApp(
-                title: 'Sorcerers',
-                debugShowCheckedModeBanner: false,
-                theme: ThemeData(
-                  colorScheme: ColorScheme.fromSeed(
-                    seedColor: Colors.black,
-                    brightness: Brightness.dark,
-                    surface: Colors.black,
-                    primary: Colors.white,
-                  ),
-                  buttonTheme: ButtonThemeData(
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.zero),
-                  ),
-                  filledButtonTheme: FilledButtonThemeData(
-                    style: ButtonStyle(
-                      shape: WidgetStateProperty.all(
-                          RoundedRectangleBorder(borderRadius: BorderRadius.zero)),
-                    ),
-                  ),
-                  outlinedButtonTheme: OutlinedButtonThemeData(
-                    style: ButtonStyle(
-                      shape: WidgetStateProperty.all(
-                          RoundedRectangleBorder(borderRadius: BorderRadius.zero)),
-                    ),
-                  ),
-                  inputDecorationTheme: InputDecorationTheme(
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.zero,
-                    ),
-                  ),
-                  iconButtonTheme: IconButtonThemeData(
-                    style: ButtonStyle(),
-                  ),
-                  useMaterial3: true,
-                ),
-                home: const HomeScreen(),
-              ),
+    return ChangeNotifierProvider<OnlinePlayProvider>.value(
+      value: onlineProvider,
+      child: MaterialApp(
+        title: 'Sorcerers',
+        debugShowCheckedModeBanner: false,
+        theme: ThemeData(
+          colorScheme: ColorScheme.fromSeed(
+            seedColor: Colors.black,
+            brightness: Brightness.dark,
+            surface: Colors.black,
+            primary: Colors.white,
+          ),
+          buttonTheme: ButtonThemeData(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.zero),
+          ),
+          filledButtonTheme: FilledButtonThemeData(
+            style: ButtonStyle(
+              shape:
+                  WidgetStateProperty.all(RoundedRectangleBorder(borderRadius: BorderRadius.zero)),
             ),
+          ),
+          outlinedButtonTheme: OutlinedButtonThemeData(
+            style: ButtonStyle(
+              shape:
+                  WidgetStateProperty.all(RoundedRectangleBorder(borderRadius: BorderRadius.zero)),
+            ),
+          ),
+          inputDecorationTheme: InputDecorationTheme(
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.zero,
+            ),
+          ),
+          iconButtonTheme: IconButtonThemeData(
+            style: ButtonStyle(),
+          ),
+          useMaterial3: true,
+        ),
+        home: const HomeScreen(),
+      ),
     );
   }
 }
